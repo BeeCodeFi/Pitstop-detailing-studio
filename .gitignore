@@ -1,0 +1,32 @@
+# Build outputs
+**/bin/
+**/obj/
+**/dist/
+**/.vite/
+
+# SQLite database (never commit live data)
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+**/node_modules/
+**/package-lock.json
+
+# .NET user secrets & local settings
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Env files (keep .env.example, ignore real values)
+**/.env.local
+**/.env.production
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS
+.DS_Store
+Thumbs.db

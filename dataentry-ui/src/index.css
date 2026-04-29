@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors — override these CSS vars in a parent site to re-theme */
+  --color-primary: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1e3a8a;
+  --color-accent: #f59e0b;
+  --color-accent-light: #fbbf24;
+  --color-surface: #f8fafc;
+  --color-surface-dark: #e2e8f0;
+  --color-sidebar: #0f172a;
+  --color-sidebar-text: #cbd5e1;
+  --color-sidebar-active: #1e40af;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-surface);
+  color: #1e293b;
+}
