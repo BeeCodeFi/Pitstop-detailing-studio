@@ -19,5 +19,4 @@ RUN mkdir -p /data
 
 EXPOSE 8080
 
-# Render injects PORT env var; fall back to 8080
-CMD ["sh", "-c", "ASPNETCORE_HTTP_PORTS=${PORT:-8080} dotnet DataEntry.Api.dll"]
+CMD ["dotnet", "DataEntry.Api.dll"]
