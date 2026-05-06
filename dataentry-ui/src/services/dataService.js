@@ -7,6 +7,7 @@ export const authService = {
 
 export const daybookService = {
   get: (date, employeeId) => api.get('/daybook', { params: { date, employeeId } }),
+  getAllSales: (date) => api.get('/daybook/all-sales', { params: { date } }),
   updateOpeningBalance: (id, openingBalance) => api.put(`/daybook/${id}/opening-balance`, { openingBalance }),
   addSale: (id, sale) => api.post(`/daybook/${id}/sales`, sale),
   deleteSale: (saleId) => api.delete(`/daybook/sales/${saleId}`),

@@ -18,6 +18,15 @@ public class DaybookController : ControllerBase
         _daybookService = daybookService;
     }
 
+    [HttpGet("all-sales")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllSales([FromQuery] DateOnly? date)
+    {
+        var targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
+        var result = await _daybookService.GetAllSalesForDateAsync(targetDate);
+        return Ok(result);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] DateOnly? date, [FromQuery] int? employeeId)
     {

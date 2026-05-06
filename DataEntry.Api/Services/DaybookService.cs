@@ -200,4 +200,34 @@ public class DaybookService
             s.Amount, s.PaymentMode, s.Notes, s.CreatedAt
         );
     }
+
+    public async Task<DailyCombinedSalesDto> GetAllSalesForDateAsync(DateOnly date)
+    {
+        var entries = await _db.DaybookEntries
+            .Include(d => d.Employee)
+            .Include(d => d.Sales).ThenInclude(s => s.Customer)
+            .Include(d => d.Sales).ThenInclude(s => s.ServiceType)
+            .Where(d => d.Date == date)
+            .ToListAsync();
+
+        var sales = entries
+            .SelectMany(e => e.Sales.Select(s => new SaleWithEmployeeDto(
+                s.Id, e.EmployeeId, e.Employee.Name,
+                s.CustomerId, s.Customer?.Name,
+                s.ServiceTypeId, s.ServiceType?.Name ?? "",
+                s.VehicleNumber, s.VehicleType,
+                s.Amount, s.PaymentMode, s.Notes, s.CreatedAt
+            )))
+            .OrderBy(s => s.CreatedAt)
+            .ToList();
+
+        return new DailyCombinedSalesDto(
+            date, sales,
+            sales.Sum(s => s.Amount),
+            sales.Where(s => s.PaymentMode == "Cash").Sum(s => s.Amount),
+            sales.Where(s => s.PaymentMode == "Card").Sum(s => s.Amount),
+            sales.Where(s => s.PaymentMode == "UPI").Sum(s => s.Amount),
+            sales.Count
+        );
+    }
 }

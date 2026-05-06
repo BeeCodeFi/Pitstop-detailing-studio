@@ -236,3 +236,30 @@ public record UpdateSalaryPaymentRequest(
     DateOnly? Date,
     string? Notes
 );
+
+// === Combined Daily Sales (Admin view) ===
+public record SaleWithEmployeeDto(
+    int Id,
+    int EmployeeId,
+    string EmployeeName,
+    int? CustomerId,
+    string? CustomerName,
+    int ServiceTypeId,
+    string ServiceTypeName,
+    string? VehicleNumber,
+    string? VehicleType,
+    decimal Amount,
+    string PaymentMode,
+    string? Notes,
+    DateTime CreatedAt
+);
+
+public record DailyCombinedSalesDto(
+    DateOnly Date,
+    List<SaleWithEmployeeDto> Sales,
+    decimal TotalSales,
+    decimal TotalCash,
+    decimal TotalCard,
+    decimal TotalUpi,
+    int TransactionCount
+);

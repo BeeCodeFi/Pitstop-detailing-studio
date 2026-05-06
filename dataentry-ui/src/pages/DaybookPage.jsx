@@ -18,6 +18,7 @@ export default function DaybookPage() {
   const [loading, setLoading] = useState(true);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [allSales, setAllSales] = useState(null); // admin: combined sales from all employees
 
   const EMPTY_LINE = () => ({ serviceTypeId: '', amount: '' });
   const [saleForm, setSaleForm] = useState({
@@ -60,6 +61,10 @@ export default function DaybookPage() {
     try {
       const { data } = await daybookService.get(date);
       setDaybook(data);
+      if (isAdmin) {
+        const { data: combined } = await daybookService.getAllSales(date);
+        setAllSales(combined);
+      }
     } catch (err) {
       toast.error('Failed to load daybook');
     } finally {
@@ -266,39 +271,51 @@ export default function DaybookPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-        <StatCard title="Opening" value={daybook.openingBalance} icon={IndianRupee} color="primary" />
-        <StatCard title="Total Sales" value={daybook.totalSales} icon={TrendingUp} color="success" />
-        <StatCard title="Cash" value={daybook.totalCashCollected} icon={Wallet} color="success" />
-        <StatCard title="Card" value={daybook.totalCardCollected} icon={CreditCard} color="accent" />
-        <StatCard title="UPI" value={daybook.totalUpiCollected} icon={Smartphone} color="warning" />
-        <StatCard title="Expenses" value={daybook.totalExpenses} icon={Receipt} color="danger" />
-      </div>
-
-      {/* Closing Balance */}
-      <div className="bg-gradient-to-r from-primary to-primary-light rounded-xl p-5 mb-6 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-white/80">Closing Balance</p>
-            <p className="text-3xl font-bold mt-1">₹{daybook.closingBalance.toLocaleString('en-IN')}</p>
-            <p className="text-xs text-white/60 mt-1">Opening ({daybook.openingBalance}) + Sales ({daybook.totalSales}) - Expenses ({daybook.totalExpenses})</p>
-          </div>
-          {!daybook.isFinalized && isAdmin && (
-            <button
-              onClick={handleFinalize}
-              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-            >
-              <Lock className="w-4 h-4" /> Finalize Day
-            </button>
-          )}
+      {isAdmin ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+          <StatCard title="All Sales" value={allSales?.totalSales ?? 0} icon={TrendingUp} color="success" />
+          <StatCard title="Cash" value={allSales?.totalCash ?? 0} icon={Wallet} color="success" />
+          <StatCard title="Card" value={allSales?.totalCard ?? 0} icon={CreditCard} color="accent" />
+          <StatCard title="UPI" value={allSales?.totalUpi ?? 0} icon={Smartphone} color="warning" />
+          <StatCard title="Expenses" value={daybook.totalExpenses} icon={Receipt} color="danger" />
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <StatCard title="My Sales" value={daybook.totalSales} icon={TrendingUp} color="success" />
+          <StatCard title="Cash" value={daybook.totalCashCollected} icon={Wallet} color="success" />
+          <StatCard title="Card" value={daybook.totalCardCollected} icon={CreditCard} color="accent" />
+          <StatCard title="UPI" value={daybook.totalUpiCollected} icon={Smartphone} color="warning" />
+        </div>
+      )}
+
+      {/* Closing Balance — admin only (based on admin's own books) */}
+      {isAdmin && (
+        <div className="bg-gradient-to-r from-primary to-primary-light rounded-xl p-5 mb-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-white/80">Closing Balance (Admin Books)</p>
+              <p className="text-3xl font-bold mt-1">₹{daybook.closingBalance.toLocaleString('en-IN')}</p>
+              <p className="text-xs text-white/60 mt-1">Opening ({daybook.openingBalance}) + Sales ({daybook.totalSales}) - Expenses ({daybook.totalExpenses})</p>
+            </div>
+            {!daybook.isFinalized && (
+              <button
+                onClick={handleFinalize}
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Lock className="w-4 h-4" /> Finalize Day
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Sales Section */}
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Sales ({daybook.sales?.length || 0})</h3>
+            <h3 className="font-semibold text-gray-900">
+              {isAdmin ? `All Sales Today (${allSales?.sales?.length ?? 0})` : `My Sales (${daybook.sales?.length || 0})`}
+            </h3>
             {(!daybook.isFinalized || isAdmin) && (
               <button
                 onClick={() => setShowSaleModal(true)}
@@ -309,10 +326,45 @@ export default function DaybookPage() {
             )}
           </div>
           <div className="divide-y divide-gray-50 max-h-96 overflow-auto">
-            {daybook.sales?.length === 0 && (
+            {/* Admin: combined view from all employees */}
+            {isAdmin && (allSales?.sales?.length === 0) && (
+              <p className="p-8 text-center text-gray-400 text-sm">No sales yet today.</p>
+            )}
+            {isAdmin && allSales?.sales?.map(sale => (
+              <div key={sale.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-gray-700">{sale.serviceTypeName}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      sale.paymentMode === 'Cash' ? 'bg-green-100 text-green-700' :
+                      sale.paymentMode === 'Card' ? 'bg-blue-100 text-blue-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {sale.paymentMode}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                      {sale.employeeName}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {sale.customerName || 'Walk-in'}
+                    {sale.vehicleNumber ? ` • ${sale.vehicleNumber}` : ''}
+                    {sale.vehicleType ? ` • ${sale.vehicleType}` : ''}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-bold text-gray-900">₹{sale.amount.toLocaleString('en-IN')}</p>
+                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-danger cursor-pointer">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {/* Employee: own sales only */}
+            {!isAdmin && daybook.sales?.length === 0 && (
               <p className="p-8 text-center text-gray-400 text-sm">No sales yet. Click "Add Sale" to start.</p>
             )}
-            {daybook.sales?.map(sale => (
+            {!isAdmin && daybook.sales?.map(sale => (
               <div key={sale.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -333,65 +385,69 @@ export default function DaybookPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm font-bold text-gray-900">₹{sale.amount.toLocaleString('en-IN')}</p>
-                  {isAdmin && (
-                    <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-danger cursor-pointer">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
-          {daybook.sales?.length > 0 && (
+          {/* Total footer */}
+          {isAdmin && (allSales?.sales?.length ?? 0) > 0 && (
             <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
               <div className="flex justify-between text-sm font-semibold text-gray-700">
                 <span>Total Sales</span>
+                <span>₹{(allSales?.totalSales ?? 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          )}
+          {!isAdmin && (daybook.sales?.length ?? 0) > 0 && (
+            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+              <div className="flex justify-between text-sm font-semibold text-gray-700">
+                <span>My Total Sales</span>
                 <span>₹{daybook.totalSales.toLocaleString('en-IN')}</span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Expenses Section */}
-        <div className="bg-white rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">Expenses ({daybook.expenses?.length || 0})</h3>
-            {(!daybook.isFinalized || isAdmin) && (
-              <button
-                onClick={() => setShowExpenseModal(true)}
-                className="flex items-center gap-1 bg-danger text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition-colors cursor-pointer"
-              >
-                <Plus className="w-4 h-4" /> Add Expense
-              </button>
-            )}
-          </div>
-          <div className="divide-y divide-gray-50 max-h-96 overflow-auto">
-            {daybook.expenses?.length === 0 && (
-              <p className="p-8 text-center text-gray-400 text-sm">No expenses recorded.</p>
-            )}
-            {daybook.expenses?.map(expense => (
-              <div key={expense.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
-                <p className="text-sm text-gray-700">{expense.description}</p>
-                <div className="flex items-center gap-3">
-                  <p className="text-sm font-bold text-danger">-₹{expense.amount.toLocaleString('en-IN')}</p>
-                  {isAdmin && (
+        {/* Expenses Section — Admin only */}
+        {isAdmin && (
+          <div className="bg-white rounded-xl border border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Expenses ({daybook.expenses?.length || 0})</h3>
+              {(!daybook.isFinalized || isAdmin) && (
+                <button
+                  onClick={() => setShowExpenseModal(true)}
+                  className="flex items-center gap-1 bg-danger text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add Expense
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-gray-50 max-h-96 overflow-auto">
+              {daybook.expenses?.length === 0 && (
+                <p className="p-8 text-center text-gray-400 text-sm">No expenses recorded.</p>
+              )}
+              {daybook.expenses?.map(expense => (
+                <div key={expense.id} className="flex items-center justify-between p-4 hover:bg-gray-50">
+                  <p className="text-sm text-gray-700">{expense.description}</p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-bold text-danger">-₹{expense.amount.toLocaleString('en-IN')}</p>
                     <button onClick={() => handleDeleteExpense(expense.id)} className="text-gray-300 hover:text-danger cursor-pointer">
                       <Trash2 className="w-4 h-4" />
                     </button>
-                  )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {daybook.expenses?.length > 0 && (
+              <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+                <div className="flex justify-between text-sm font-semibold text-danger">
+                  <span>Total Expenses</span>
+                  <span>-₹{daybook.totalExpenses.toLocaleString('en-IN')}</span>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-          {daybook.expenses?.length > 0 && (
-            <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
-              <div className="flex justify-between text-sm font-semibold text-danger">
-                <span>Total Expenses</span>
-                <span>-₹{daybook.totalExpenses.toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Add Sale Modal */}
