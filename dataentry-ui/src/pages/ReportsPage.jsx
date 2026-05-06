@@ -4,6 +4,7 @@ import { reportService, employeeService, adminService } from '../services/dataSe
 import DataTable from '../components/DataTable';
 import StatCard from '../components/StatCard';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { TrendingUp, Wallet, Receipt, Download, Trash2, Banknote, IndianRupee } from 'lucide-react';
 
@@ -111,20 +112,20 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Reports</h2>
         {isAdmin && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer"
+              className="flex items-center gap-2 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-dark transition-all cursor-pointer shadow-sm hover:shadow-md"
             >
               <Download className="w-4 h-4" /> Export CSV
             </button>
             <button
               onClick={handleReset}
               disabled={resetting}
-              className="flex items-center gap-2 bg-danger text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors cursor-pointer disabled:opacity-60"
+              className="flex items-center gap-2 bg-danger text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-red-600 transition-all cursor-pointer disabled:opacity-60 shadow-sm"
             >
               <Trash2 className="w-4 h-4" /> {resetting ? 'Resetting…' : 'Reset All Data'}
             </button>
@@ -133,12 +134,12 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit mb-6">
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit mb-6">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer ${
+            className={`px-4 py-2.5 text-sm font-medium rounded-lg transition-all cursor-pointer ${
               tab === t.id ? 'bg-white text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >

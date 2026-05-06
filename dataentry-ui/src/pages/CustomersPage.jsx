@@ -3,8 +3,9 @@ import { customerService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { Plus, Search, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Users } from 'lucide-react';
 
 export default function CustomersPage() {
   const { isAdmin } = useAuth();
@@ -102,27 +103,27 @@ export default function CustomersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Customers</h2>
-          <p className="text-sm text-gray-500 mt-1">{customers.length} customers</p>
+          <p className="text-sm text-gray-500 mt-1">{customers.length} customer{customers.length !== 1 ? 's' : ''} registered</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => handleSearch(e.target.value)}
               placeholder="Search name, phone, vehicle..."
-              className="pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none w-64"
+              className="pl-9 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none w-64 transition-all"
             />
           </div>
-          <button onClick={openCreate} className="flex items-center gap-1 bg-primary text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-dark cursor-pointer">
+          <button onClick={openCreate} className="flex items-center gap-1.5 bg-primary text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-dark cursor-pointer shadow-sm hover:shadow-md transition-all">
             <Plus className="w-4 h-4" /> Add Customer
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center text-gray-400 py-12">Loading...</div>
+        <LoadingSpinner message="Loading customers..." />
       ) : (
         <DataTable columns={columns} data={customers} emptyMessage="No customers found" />
       )}

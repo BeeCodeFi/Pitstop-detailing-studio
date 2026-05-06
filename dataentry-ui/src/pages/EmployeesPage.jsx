@@ -3,6 +3,7 @@ import { employeeService, authService } from '../services/dataService';
 import { useAuth } from '../context/AuthContext';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 
@@ -108,7 +109,7 @@ export default function EmployeesPage() {
         </button>
       </div>
 
-      {loading ? <div className="text-center text-gray-400 py-12">Loading...</div> : (
+      {loading ? <LoadingSpinner message="Loading employees..." /> : (
         <DataTable columns={columns} data={employees} emptyMessage="No employees found" />
       )}
 

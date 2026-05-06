@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { salaryService, employeeService } from '../services/dataService';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2, IndianRupee } from 'lucide-react';
 import StatCard from '../components/StatCard';
@@ -161,7 +162,7 @@ export default function SalaryPage() {
       </div>
 
       {loading
-        ? <div className="text-center text-gray-400 py-12">Loading...</div>
+        ? <LoadingSpinner message="Loading salary payments..." />
         : <DataTable columns={columns} data={payments} emptyMessage="No salary payments for this month" />
       }
 

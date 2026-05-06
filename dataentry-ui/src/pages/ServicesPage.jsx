@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { serviceTypeService } from '../services/dataService';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
 
@@ -112,7 +113,7 @@ export default function ServicesPage() {
         </button>
       </div>
 
-      {loading ? <div className="text-center text-gray-400 py-12">Loading...</div> : (
+      {loading ? <LoadingSpinner message="Loading services..." /> : (
         <DataTable columns={columns} data={services} emptyMessage="No services found" />
       )}
 

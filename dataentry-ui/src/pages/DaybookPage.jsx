@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { daybookService, customerService, serviceTypeService } from '../services/dataService';
 import StatCard from '../components/StatCard';
 import Modal from '../components/Modal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
 import {
   Plus, Trash2, Lock, IndianRupee, TrendingUp, Wallet,
@@ -229,7 +230,7 @@ export default function DaybookPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>;
+    return <LoadingSpinner message="Loading daybook..." />;
   }
 
   if (!daybook) return null;
