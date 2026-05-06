@@ -21,4 +21,4 @@ services:
       - key: Jwt__Audience
         value: DataEntry.UI
       - key: CORS_ORIGINS
-        value: https://pitstop-detailing-studio-billbook.vercel.app
+        value: https://pitstop-detailing-studio-billbook-nolfcedah.vercel.app,https://pitstop-detailing-studio-billbook.vercel.app
