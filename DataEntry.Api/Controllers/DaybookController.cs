@@ -46,10 +46,17 @@ public class DaybookController : ControllerBase
     [HttpPost("{id}/sales")]
     public async Task<IActionResult> AddSale(int id, [FromBody] AddSaleRequest request)
     {
-        var result = await _daybookService.AddSaleAsync(id, request);
-        if (result == null)
-            return BadRequest(new { message = "Cannot add sale. Entry may be finalized or invalid data." });
-        return Created($"api/daybook/sales/{result.Id}", result);
+        try
+        {
+            var result = await _daybookService.AddSaleAsync(id, request);
+            if (result == null)
+                return BadRequest(new { message = "Cannot add sale. Entry may be finalized or invalid data." });
+            return Created($"api/daybook/sales/{result.Id}", result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to save sale: {ex.Message}" });
+        }
     }
 
     [HttpDelete("sales/{saleId}")]
@@ -63,10 +70,17 @@ public class DaybookController : ControllerBase
     [HttpPost("{id}/expenses")]
     public async Task<IActionResult> AddExpense(int id, [FromBody] AddExpenseRequest request)
     {
-        var result = await _daybookService.AddExpenseAsync(id, request);
-        if (result == null)
-            return BadRequest(new { message = "Cannot add expense. Entry may be finalized." });
-        return Created($"api/daybook/expenses/{result.Id}", result);
+        try
+        {
+            var result = await _daybookService.AddExpenseAsync(id, request);
+            if (result == null)
+                return BadRequest(new { message = "Cannot add expense. Entry may be finalized." });
+            return Created($"api/daybook/expenses/{result.Id}", result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to save expense: {ex.Message}" });
+        }
     }
 
     [HttpDelete("expenses/{expenseId}")]

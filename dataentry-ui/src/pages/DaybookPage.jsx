@@ -106,14 +106,15 @@ export default function DaybookPage() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    if (!expenseForm.description || !expenseForm.amount) {
-      toast.error('Description and amount are required');
+    const amountValue = Number(expenseForm.amount);
+    if (!expenseForm.description || !expenseForm.amount || isNaN(amountValue) || amountValue <= 0) {
+      toast.error('Description and a valid amount are required');
       return;
     }
     try {
       await daybookService.addExpense(daybook.id, {
         description: expenseForm.description,
-        amount: Number(expenseForm.amount)
+        amount: amountValue
       });
       toast.success('Expense added');
       setShowExpenseModal(false);
