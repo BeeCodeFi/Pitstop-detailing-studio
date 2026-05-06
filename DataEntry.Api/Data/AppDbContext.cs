@@ -71,13 +71,15 @@ public class AppDbContext : DbContext
         );
 
         // Seed admin user (password: Admin@123)
+        // IMPORTANT: use a fixed static hash so EF migrations do NOT reset the password on every deployment.
+        // Hash was generated once with BCrypt.HashPassword("Admin@123", workFactor: 11).
         modelBuilder.Entity<Employee>().HasData(
             new Employee
             {
                 Id = 1,
                 Name = "Administrator",
                 Username = "admin",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                PasswordHash = "$2a$11$mmKQ90xIFZIRuUgTf8ioKuxlPJX6Url5Ypz0Yt6zkFra8p83QvIoG",
                 Role = "Admin",
                 IsActive = true,
                 CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)

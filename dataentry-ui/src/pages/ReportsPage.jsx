@@ -182,9 +182,15 @@ export default function ReportsPage() {
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <StatCard title="Total Sales" value={data.grandTotalSales ?? data.totalSales ?? 0} icon={TrendingUp} color="primary" />
-            <StatCard title="Total Cash" value={data.grandTotalCash ?? data.totalCash ?? 0} icon={Wallet} color="success" />
-            <StatCard title="Total Expenses" value={data.grandTotalExpenses ?? data.totalExpenses ?? 0} icon={Receipt} color="danger" />
+            <StatCard
+              title={tab === 'monthly' ? 'Monthly Sales' : tab === 'daily' ? 'Daily Sales' : 'Total Sales'}
+              value={data.grandTotalSales ?? data.totalSales ?? 0} icon={TrendingUp} color="primary" />
+            <StatCard
+              title={tab === 'monthly' ? 'Monthly Cash' : tab === 'daily' ? 'Daily Cash' : 'Total Cash'}
+              value={data.grandTotalCash ?? data.totalCash ?? 0} icon={Wallet} color="success" />
+            <StatCard
+              title={tab === 'monthly' ? 'Monthly Expenses' : tab === 'daily' ? 'Daily Expenses' : 'Total Expenses'}
+              value={data.grandTotalExpenses ?? data.totalExpenses ?? 0} icon={Receipt} color="danger" />
           </div>
 
           {/* Monthly-only salary & net income cards */}

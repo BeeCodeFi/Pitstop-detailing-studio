@@ -80,9 +80,9 @@ export default function DashboardPage() {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">This Month So Far</h3>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard title="Month Sales" value={monthlyData?.totalSales || 0} icon={TrendingUp} color="primary" />
-        <StatCard title="Cash Collected" value={monthlyData?.totalCash || 0} icon={Wallet} color="success" />
-        <StatCard title="Month Expenses" value={monthlyData?.totalExpenses || 0} icon={Receipt} color="danger" />
+        <StatCard title="Monthly Sales" value={monthlyData?.totalSales || 0} icon={TrendingUp} color="primary" />
+        <StatCard title="Monthly Cash" value={monthlyData?.totalCash || 0} icon={Wallet} color="success" />
+        <StatCard title="Monthly Expenses" value={monthlyData?.totalExpenses || 0} icon={Receipt} color="danger" />
         <StatCard title="Net Income" value={(monthlyData?.totalSales || 0) - (monthlyData?.totalExpenses || 0)} icon={IndianRupee} color="accent" />
       </div>
 
@@ -91,11 +91,11 @@ export default function DashboardPage() {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Today at a Glance</h3>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
-        <StatCard title="Today Sales" value={todayDaybook?.totalSales || 0} icon={TrendingUp} color="success" />
-        <StatCard title="Cash" value={todayDaybook?.totalCashCollected || 0} icon={Wallet} color="success" />
-        <StatCard title="Card" value={todayDaybook?.totalCardCollected || 0} icon={CreditCard} color="accent" />
-        <StatCard title="UPI" value={todayDaybook?.totalUpiCollected || 0} icon={Smartphone} color="warning" />
-        <StatCard title="Expenses" value={todayDaybook?.totalExpenses || 0} icon={Receipt} color="danger" />
+        <StatCard title="Today's Sales" value={todayDaybook?.totalSales || 0} icon={TrendingUp} color="success" />
+        <StatCard title="Today's Cash" value={todayDaybook?.totalCashCollected || 0} icon={Wallet} color="success" />
+        <StatCard title="Today's Card" value={todayDaybook?.totalCardCollected || 0} icon={CreditCard} color="accent" />
+        <StatCard title="Today's UPI" value={todayDaybook?.totalUpiCollected || 0} icon={Smartphone} color="warning" />
+        <StatCard title="Today's Expenses" value={todayDaybook?.totalExpenses || 0} icon={Receipt} color="danger" />
         <StatCard title="Cash in Hand" value={todayDaybook?.closingBalance || 0} icon={IndianRupee} color="primary" />
       </div>
 
