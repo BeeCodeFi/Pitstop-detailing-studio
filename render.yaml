@@ -22,3 +22,5 @@ services:
         value: DataEntry.UI
       - key: CORS_ORIGINS
         value: https://pitstop-detailing-studio-billbook-nolfcedah.vercel.app,https://pitstop-detailing-studio-billbook.vercel.app
+      - key: DOTNET_USE_POLLING_FILE_WATCHER
+        value: "1"
