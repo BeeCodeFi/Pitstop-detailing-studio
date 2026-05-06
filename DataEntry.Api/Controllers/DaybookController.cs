@@ -48,7 +48,7 @@ public class DaybookController : ControllerBase
     {
         try
         {
-            var result = await _daybookService.AddSaleAsync(id, request);
+            var result = await _daybookService.AddSaleAsync(id, request, IsAdmin());
             if (result == null)
                 return BadRequest(new { message = "Cannot add sale. Entry may be finalized or invalid data." });
             return Created($"api/daybook/sales/{result.Id}", result);
@@ -62,7 +62,7 @@ public class DaybookController : ControllerBase
     [HttpDelete("sales/{saleId}")]
     public async Task<IActionResult> DeleteSale(int saleId)
     {
-        var success = await _daybookService.DeleteSaleAsync(saleId);
+        var success = await _daybookService.DeleteSaleAsync(saleId, IsAdmin());
         if (!success) return BadRequest(new { message = "Cannot delete sale. Entry may be finalized." });
         return NoContent();
     }
@@ -72,7 +72,7 @@ public class DaybookController : ControllerBase
     {
         try
         {
-            var result = await _daybookService.AddExpenseAsync(id, request);
+            var result = await _daybookService.AddExpenseAsync(id, request, IsAdmin());
             if (result == null)
                 return BadRequest(new { message = "Cannot add expense. Entry may be finalized." });
             return Created($"api/daybook/expenses/{result.Id}", result);
@@ -86,7 +86,7 @@ public class DaybookController : ControllerBase
     [HttpDelete("expenses/{expenseId}")]
     public async Task<IActionResult> DeleteExpense(int expenseId)
     {
-        var success = await _daybookService.DeleteExpenseAsync(expenseId);
+        var success = await _daybookService.DeleteExpenseAsync(expenseId, IsAdmin());
         if (!success) return BadRequest(new { message = "Cannot delete expense. Entry may be finalized." });
         return NoContent();
     }

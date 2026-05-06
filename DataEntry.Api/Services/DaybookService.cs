@@ -58,10 +58,10 @@ public class DaybookService
         return MapToDto(entry);
     }
 
-    public async Task<SaleTransactionDto?> AddSaleAsync(int daybookId, AddSaleRequest request)
+    public async Task<SaleTransactionDto?> AddSaleAsync(int daybookId, AddSaleRequest request, bool bypassFinalized = false)
     {
         var entry = await _db.DaybookEntries.FindAsync(daybookId);
-        if (entry == null || entry.IsFinalized) return null;
+        if (entry == null || (entry.IsFinalized && !bypassFinalized)) return null;
 
         var validModes = new[] { "Cash", "Card", "UPI" };
         if (!validModes.Contains(request.PaymentMode)) return null;
@@ -91,13 +91,13 @@ public class DaybookService
         return MapSaleToDto(loaded);
     }
 
-    public async Task<bool> DeleteSaleAsync(int saleId)
+    public async Task<bool> DeleteSaleAsync(int saleId, bool bypassFinalized = false)
     {
         var sale = await _db.SaleTransactions
             .Include(s => s.DaybookEntry)
             .FirstOrDefaultAsync(s => s.Id == saleId);
 
-        if (sale == null || sale.DaybookEntry.IsFinalized) return false;
+        if (sale == null || (sale.DaybookEntry.IsFinalized && !bypassFinalized)) return false;
 
         _db.SaleTransactions.Remove(sale);
         sale.DaybookEntry.UpdatedAt = DateTime.UtcNow;
@@ -105,10 +105,10 @@ public class DaybookService
         return true;
     }
 
-    public async Task<ExpenseDto?> AddExpenseAsync(int daybookId, AddExpenseRequest request)
+    public async Task<ExpenseDto?> AddExpenseAsync(int daybookId, AddExpenseRequest request, bool bypassFinalized = false)
     {
         var entry = await _db.DaybookEntries.FindAsync(daybookId);
-        if (entry == null || entry.IsFinalized) return null;
+        if (entry == null || (entry.IsFinalized && !bypassFinalized)) return null;
 
         var expense = new Expense
         {
@@ -124,13 +124,13 @@ public class DaybookService
         return new ExpenseDto(expense.Id, expense.Description, expense.Amount, expense.CreatedAt);
     }
 
-    public async Task<bool> DeleteExpenseAsync(int expenseId)
+    public async Task<bool> DeleteExpenseAsync(int expenseId, bool bypassFinalized = false)
     {
         var expense = await _db.Expenses
             .Include(e => e.DaybookEntry)
             .FirstOrDefaultAsync(e => e.Id == expenseId);
 
-        if (expense == null || expense.DaybookEntry.IsFinalized) return false;
+        if (expense == null || (expense.DaybookEntry.IsFinalized && !bypassFinalized)) return false;
 
         _db.Expenses.Remove(expense);
         expense.DaybookEntry.UpdatedAt = DateTime.UtcNow;

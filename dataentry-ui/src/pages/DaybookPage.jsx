@@ -6,12 +6,11 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import {
   Plus, Trash2, Lock, IndianRupee, TrendingUp, Wallet,
-  Receipt, CreditCard, Smartphone, Search
+  Receipt, CreditCard, Smartphone, Search, ChevronLeft, ChevronRight, CalendarDays, X
 } from 'lucide-react';
 
 export default function DaybookPage() {
-  const { user, isAdmin } = useAuth();
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const { user, isAdmin, activeDaybookDate: date, setActiveDaybookDate: setDate } = useAuth();
   const [daybook, setDaybook] = useState(null);
   const [services, setServices] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -20,11 +19,36 @@ export default function DaybookPage() {
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
 
+  const EMPTY_LINE = () => ({ serviceTypeId: '', amount: '' });
   const [saleForm, setSaleForm] = useState({
-    customerId: '', serviceTypeId: '', vehicleNumber: '',
-    vehicleType: 'Car', amount: '', paymentMode: 'Cash', notes: ''
+    customerId: '', vehicleNumber: '', vehicleType: 'Car',
+    paymentMode: 'Cash', notes: '',
+    serviceLines: [EMPTY_LINE()]
   });
   const [expenseForm, setExpenseForm] = useState({ description: '', amount: '' });
+
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = date === today;
+  const isPastDate = date < today;
+
+  // Reset to today when component unmounts (optional — keep commented to persist across sessions)
+
+  const goToPreviousDay = () => {
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() - 1);
+    setDate(d.toISOString().split('T')[0]);
+  };
+
+  const goToNextDay = () => {
+    if (isToday) return;
+    const d = new Date(date + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    setDate(d.toISOString().split('T')[0]);
+  };
+
+  const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
 
   useEffect(() => {
     loadDaybook();
@@ -59,34 +83,51 @@ export default function DaybookPage() {
     } catch (err) { /* ignore */ }
   };
 
-  const handleServiceChange = (serviceTypeId) => {
-    const svc = services.find(s => s.id === Number(serviceTypeId));
-    setSaleForm(prev => ({
-      ...prev,
-      serviceTypeId,
-      amount: svc ? svc.defaultPrice : prev.amount
-    }));
+  const updateServiceLine = (index, field, value) => {
+    setSaleForm(prev => {
+      const lines = prev.serviceLines.map((l, i) => {
+        if (i !== index) return l;
+        if (field === 'serviceTypeId') {
+          const svc = services.find(s => s.id === Number(value));
+          return { ...l, serviceTypeId: value, amount: svc ? String(svc.defaultPrice) : l.amount };
+        }
+        return { ...l, [field]: value };
+      });
+      return { ...prev, serviceLines: lines };
+    });
+  };
+
+  const addServiceLine = () => {
+    setSaleForm(prev => ({ ...prev, serviceLines: [...prev.serviceLines, EMPTY_LINE()] }));
+  };
+
+  const removeServiceLine = (index) => {
+    setSaleForm(prev => ({ ...prev, serviceLines: prev.serviceLines.filter((_, i) => i !== index) }));
   };
 
   const handleAddSale = async (e) => {
     e.preventDefault();
-    if (!saleForm.serviceTypeId || !saleForm.amount) {
-      toast.error('Service and amount are required');
+    const validLines = saleForm.serviceLines.filter(l => l.serviceTypeId && l.amount && Number(l.amount) > 0);
+    if (validLines.length === 0) {
+      toast.error('At least one service with a valid amount is required');
       return;
     }
     try {
-      await daybookService.addSale(daybook.id, {
-        customerId: saleForm.customerId ? Number(saleForm.customerId) : null,
-        serviceTypeId: Number(saleForm.serviceTypeId),
-        vehicleNumber: saleForm.vehicleNumber || null,
-        vehicleType: saleForm.vehicleType || null,
-        amount: Number(saleForm.amount),
-        paymentMode: saleForm.paymentMode,
-        notes: saleForm.notes || null
-      });
-      toast.success('Sale added');
+      for (const line of validLines) {
+        await daybookService.addSale(daybook.id, {
+          customerId: saleForm.customerId ? Number(saleForm.customerId) : null,
+          serviceTypeId: Number(line.serviceTypeId),
+          vehicleNumber: saleForm.vehicleNumber || null,
+          vehicleType: saleForm.vehicleType || null,
+          amount: Number(line.amount),
+          paymentMode: saleForm.paymentMode,
+          notes: saleForm.notes || null
+        });
+      }
+      toast.success(validLines.length > 1 ? `${validLines.length} sales added` : 'Sale added');
       setShowSaleModal(false);
-      setSaleForm({ customerId: '', serviceTypeId: '', vehicleNumber: '', vehicleType: 'Car', amount: '', paymentMode: 'Cash', notes: '' });
+      setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] });
+      setCustomerSearch('');
       loadDaybook();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to add sale');
@@ -156,25 +197,73 @@ export default function DaybookPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Daily Daybook</h2>
           <p className="text-sm text-gray-500 mt-1">{daybook.employeeName}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
-          />
-          {daybook.isFinalized && (
-            <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium">
-              <Lock className="w-3 h-3" /> Finalized
-            </span>
-          )}
+        <div className="flex flex-col items-end gap-2">
+          {/* Date Navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToPreviousDay}
+              className="p-1.5 rounded-lg border border-gray-300 hover:bg-gray-100 transition-colors cursor-pointer"
+              title="Previous day"
+            >
+              <ChevronLeft className="w-4 h-4 text-gray-600" />
+            </button>
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={date}
+                max={today}
+                onChange={(e) => setDate(e.target.value)}
+                className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <button
+              onClick={goToNextDay}
+              disabled={isToday}
+              className={`p-1.5 rounded-lg border border-gray-300 transition-colors ${
+                isToday ? 'opacity-40 cursor-not-allowed' : 'hover:bg-gray-100 cursor-pointer'
+              }`}
+              title="Next day"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </button>
+            {!isToday && (
+              <button
+                onClick={() => setDate(today)}
+                className="text-xs px-3 py-2 rounded-lg border border-primary text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer font-medium"
+              >
+                Today
+              </button>
+            )}
+            {daybook.isFinalized && (
+              <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium">
+                <Lock className="w-3 h-3" /> Finalized
+              </span>
+            )}
+          </div>
+          {/* Date label */}
+          <p className="text-xs text-gray-400">{formattedDate}</p>
         </div>
       </div>
+
+      {/* Past date banner */}
+      {isPastDate && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm mb-4 ${
+          daybook.isFinalized
+            ? 'bg-gray-100 border border-gray-300 text-gray-600'
+            : 'bg-amber-50 border border-amber-200 text-amber-700'
+        }`}>
+          <CalendarDays className="w-4 h-4 flex-shrink-0" />
+          {daybook.isFinalized
+            ? 'This past date has been finalized and is locked. No further changes can be made.'
+            : 'Viewing a past date — you can still add or remove sales and expenses for this date.'}
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -210,7 +299,7 @@ export default function DaybookPage() {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Sales ({daybook.sales?.length || 0})</h3>
-            {!daybook.isFinalized && (
+            {(!daybook.isFinalized || isAdmin) && (
               <button
                 onClick={() => setShowSaleModal(true)}
                 className="flex items-center gap-1 bg-primary text-white px-3 py-1.5 rounded-lg text-sm hover:bg-primary-dark transition-colors cursor-pointer"
@@ -244,7 +333,7 @@ export default function DaybookPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <p className="text-sm font-bold text-gray-900">₹{sale.amount.toLocaleString('en-IN')}</p>
-                  {!daybook.isFinalized && isAdmin && (
+                  {isAdmin && (
                     <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-danger cursor-pointer">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -267,7 +356,7 @@ export default function DaybookPage() {
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h3 className="font-semibold text-gray-900">Expenses ({daybook.expenses?.length || 0})</h3>
-            {!daybook.isFinalized && (
+            {(!daybook.isFinalized || isAdmin) && (
               <button
                 onClick={() => setShowExpenseModal(true)}
                 className="flex items-center gap-1 bg-danger text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition-colors cursor-pointer"
@@ -285,7 +374,7 @@ export default function DaybookPage() {
                 <p className="text-sm text-gray-700">{expense.description}</p>
                 <div className="flex items-center gap-3">
                   <p className="text-sm font-bold text-danger">-₹{expense.amount.toLocaleString('en-IN')}</p>
-                  {!daybook.isFinalized && isAdmin && (
+                  {isAdmin && (
                     <button onClick={() => handleDeleteExpense(expense.id)} className="text-gray-300 hover:text-danger cursor-pointer">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -306,7 +395,7 @@ export default function DaybookPage() {
       </div>
 
       {/* Add Sale Modal */}
-      <Modal isOpen={showSaleModal} onClose={() => setShowSaleModal(false)} title="Add Sale" size="md">
+      <Modal isOpen={showSaleModal} onClose={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} title="Add Sale" size="md">
         <form onSubmit={handleAddSale} className="space-y-4">
           {/* Customer search */}
           <div>
@@ -347,33 +436,61 @@ export default function DaybookPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Service *</label>
-              <select
-                value={saleForm.serviceTypeId}
-                onChange={(e) => handleServiceChange(e.target.value)}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+          {/* Service lines */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Services *</label>
+              <button
+                type="button"
+                onClick={addServiceLine}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary-dark font-medium cursor-pointer"
               >
-                <option value="">Select service</option>
-                {services.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} (₹{s.defaultPrice})</option>
-                ))}
-              </select>
+                <Plus className="w-3 h-3" /> Add service
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={saleForm.amount}
-                onChange={(e) => setSaleForm(prev => ({ ...prev, amount: e.target.value }))}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
-              />
+            <div className="space-y-2">
+              {saleForm.serviceLines.map((line, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <select
+                    value={line.serviceTypeId}
+                    onChange={(e) => updateServiceLine(idx, 'serviceTypeId', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="">Select service</option>
+                    {services.map(s => (
+                      <option key={s.id} value={s.id}>{s.name} (₹{s.defaultPrice})</option>
+                    ))}
+                  </select>
+                  <div className="relative w-28 flex-shrink-0">
+                    <span className="absolute left-2.5 top-2 text-gray-400 text-sm">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={line.amount}
+                      onChange={(e) => updateServiceLine(idx, 'amount', e.target.value)}
+                      placeholder="0"
+                      className="w-full pl-6 pr-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  {saleForm.serviceLines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeServiceLine(idx)}
+                      className="p-1.5 text-gray-300 hover:text-danger cursor-pointer flex-shrink-0"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
+            {/* Total */}
+            {saleForm.serviceLines.length > 1 && (
+              <div className="flex justify-end mt-2 text-sm font-semibold text-gray-700">
+                Total: ₹{saleForm.serviceLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0).toLocaleString('en-IN')}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-4">
@@ -405,7 +522,6 @@ export default function DaybookPage() {
               <select
                 value={saleForm.paymentMode}
                 onChange={(e) => setSaleForm(prev => ({ ...prev, paymentMode: e.target.value }))}
-                required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
               >
                 <option value="Cash">Cash</option>
@@ -427,8 +543,10 @@ export default function DaybookPage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setShowSaleModal(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark cursor-pointer">Add Sale</button>
+            <button type="button" onClick={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark cursor-pointer">
+              {saleForm.serviceLines.filter(l => l.serviceTypeId).length > 1 ? `Add ${saleForm.serviceLines.filter(l => l.serviceTypeId).length} Sales` : 'Add Sale'}
+            </button>
           </div>
         </form>
       </Modal>

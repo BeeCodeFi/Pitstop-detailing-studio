@@ -9,6 +9,9 @@ export function AuthProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(false);
+  const [activeDaybookDate, setActiveDaybookDate] = useState(
+    new Date().toISOString().split('T')[0]
+  );
 
   const login = async (username, password) => {
     setLoading(true);
@@ -38,7 +41,7 @@ export function AuthProvider({ children }) {
   const isAdmin = user?.role === 'Admin';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, isAdmin, activeDaybookDate, setActiveDaybookDate }}>
       {children}
     </AuthContext.Provider>
   );
