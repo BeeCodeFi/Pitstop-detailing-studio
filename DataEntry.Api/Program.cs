@@ -43,15 +43,27 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var envOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")
-            ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var envOrigins = (Environment.GetEnvironmentVariable("CORS_ORIGINS")
+            ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            ?? Array.Empty<string>();
 
-        var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
-        var origins = (envOrigins is { Length: > 0 } ? envOrigins : configuredOrigins)
-            ?? new[] { "http://localhost:5173" };
+        var configuredOrigins = builder.Configuration
+            .GetSection("Cors:Origins").Get<string[]>()
+            ?? Array.Empty<string>();
 
-        policy.WithOrigins(
-                origins)
+        var explicitOrigins = envOrigins.Length > 0 ? envOrigins : configuredOrigins;
+
+        policy.SetIsOriginAllowed(origin =>
+            {
+                // always allow localhost dev
+                if (origin.StartsWith("http://localhost") || origin.StartsWith("https://localhost"))
+                    return true;
+                // allow any Vercel preview or production domain
+                if (origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase))
+                    return true;
+                // allow explicitly configured origins
+                return explicitOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase);
+            })
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
