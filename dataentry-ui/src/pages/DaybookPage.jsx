@@ -40,14 +40,14 @@ export default function DaybookPage() {
   const goToPreviousDay = () => {
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() - 1);
-    setDate(d.toISOString().split('T')[0]);
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
   };
 
   const goToNextDay = () => {
     if (isToday) return;
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() + 1);
-    setDate(d.toISOString().split('T')[0]);
+    setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
   };
 
   const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('en-IN', {
