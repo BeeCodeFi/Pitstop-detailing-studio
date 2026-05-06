@@ -26,7 +26,7 @@ public class SaleTransaction
     public decimal Amount { get; set; }
 
     [Required, MaxLength(10)]
-    public string PaymentMode { get; set; } = "Cash"; // Cash, Card, UPI
+    public string PaymentMode { get; set; } = "Cash"; // Cash, Card, UPI, Pending
 
     [MaxLength(500)]
     public string? Notes { get; set; }

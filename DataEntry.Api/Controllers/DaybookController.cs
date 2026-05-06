@@ -76,6 +76,22 @@ public class DaybookController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("sales/{saleId}")]
+    public async Task<IActionResult> UpdateSale(int saleId, [FromBody] UpdateSaleRequest request)
+    {
+        try
+        {
+            var result = await _daybookService.UpdateSaleAsync(saleId, request, IsAdmin());
+            if (result == null)
+                return BadRequest(new { message = "Cannot update sale. Entry may be finalized or invalid data." });
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = $"Failed to update sale: {ex.Message}" });
+        }
+    }
+
     [HttpPost("{id}/expenses")]
     public async Task<IActionResult> AddExpense(int id, [FromBody] AddExpenseRequest request)
     {

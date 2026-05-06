@@ -6,7 +6,7 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import {
   Plus, Trash2, Lock, IndianRupee, TrendingUp, Wallet,
-  Receipt, CreditCard, Smartphone, Search, ChevronLeft, ChevronRight, CalendarDays, X
+  Receipt, CreditCard, Smartphone, Search, ChevronLeft, ChevronRight, CalendarDays, X, Edit2, Clock
 } from 'lucide-react';
 
 export default function DaybookPage() {
@@ -18,6 +18,9 @@ export default function DaybookPage() {
   const [loading, setLoading] = useState(true);
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [showEditSaleModal, setShowEditSaleModal] = useState(false);
+  const [editingSale, setEditingSale] = useState(null);
+  const [editSaleForm, setEditSaleForm] = useState({ serviceTypeId: '', amount: '', paymentMode: 'Cash', vehicleNumber: '', vehicleType: 'Hatchback', notes: '' });
   const [allSales, setAllSales] = useState(null); // admin: combined sales from all employees
 
   const EMPTY_LINE = () => ({ serviceTypeId: '', amount: '' });
@@ -150,6 +153,38 @@ export default function DaybookPage() {
     }
   };
 
+  const openEditSale = (sale) => {
+    setEditingSale(sale);
+    setEditSaleForm({
+      serviceTypeId: sale.serviceTypeId?.toString() || '',
+      amount: sale.amount?.toString() || '',
+      paymentMode: sale.paymentMode || 'Cash',
+      vehicleNumber: sale.vehicleNumber || '',
+      vehicleType: sale.vehicleType || 'Hatchback',
+      notes: sale.notes || '',
+    });
+    setShowEditSaleModal(true);
+  };
+
+  const handleEditSale = async (e) => {
+    e.preventDefault();
+    try {
+      await daybookService.updateSale(editingSale.id, {
+        serviceTypeId: Number(editSaleForm.serviceTypeId),
+        amount: Number(editSaleForm.amount),
+        paymentMode: editSaleForm.paymentMode,
+        vehicleNumber: editSaleForm.vehicleNumber || null,
+        vehicleType: editSaleForm.vehicleType || null,
+        notes: editSaleForm.notes || null,
+      });
+      toast.success('Sale updated');
+      setShowEditSaleModal(false);
+      loadDaybook();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update sale');
+    }
+  };
+
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const amountValue = Number(expenseForm.amount);
@@ -272,19 +307,21 @@ export default function DaybookPage() {
 
       {/* Summary Cards */}
       {isAdmin ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           <StatCard title="All Sales" value={allSales?.totalSales ?? 0} icon={TrendingUp} color="success" />
           <StatCard title="Cash" value={allSales?.totalCash ?? 0} icon={Wallet} color="success" />
           <StatCard title="Card" value={allSales?.totalCard ?? 0} icon={CreditCard} color="accent" />
           <StatCard title="UPI" value={allSales?.totalUpi ?? 0} icon={Smartphone} color="warning" />
+          <StatCard title="Pending" value={allSales?.totalPending ?? 0} icon={Clock} color="danger" />
           <StatCard title="Expenses" value={daybook.totalExpenses} icon={Receipt} color="danger" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           <StatCard title="My Sales" value={daybook.totalSales} icon={TrendingUp} color="success" />
           <StatCard title="Cash" value={daybook.totalCashCollected} icon={Wallet} color="success" />
           <StatCard title="Card" value={daybook.totalCardCollected} icon={CreditCard} color="accent" />
           <StatCard title="UPI" value={daybook.totalUpiCollected} icon={Smartphone} color="warning" />
+          <StatCard title="Pending" value={daybook.totalPendingCollected} icon={Clock} color="danger" />
         </div>
       )}
 
@@ -338,7 +375,8 @@ export default function DaybookPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       sale.paymentMode === 'Cash' ? 'bg-green-100 text-green-700' :
                       sale.paymentMode === 'Card' ? 'bg-blue-100 text-blue-700' :
-                      'bg-yellow-100 text-yellow-700'
+                      sale.paymentMode === 'UPI' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
                     }`}>
                       {sale.paymentMode}
                     </span>
@@ -353,8 +391,11 @@ export default function DaybookPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="text-sm font-bold text-gray-900">₹{sale.amount.toLocaleString('en-IN')}</p>
-                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-danger cursor-pointer">
+                  <p className={`text-sm font-bold ${sale.paymentMode === 'Pending' ? 'text-red-500' : 'text-gray-900'}`}>₹{sale.amount.toLocaleString('en-IN')}</p>
+                  <button onClick={() => openEditSale(sale)} className="text-gray-300 hover:text-primary cursor-pointer" title="Edit">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => handleDeleteSale(sale.id)} className="text-gray-300 hover:text-danger cursor-pointer" title="Delete">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -372,7 +413,8 @@ export default function DaybookPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       sale.paymentMode === 'Cash' ? 'bg-green-100 text-green-700' :
                       sale.paymentMode === 'Card' ? 'bg-blue-100 text-blue-700' :
-                      'bg-yellow-100 text-yellow-700'
+                      sale.paymentMode === 'UPI' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
                     }`}>
                       {sale.paymentMode}
                     </span>
@@ -384,7 +426,10 @@ export default function DaybookPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="text-sm font-bold text-gray-900">₹{sale.amount.toLocaleString('en-IN')}</p>
+                  <p className={`text-sm font-bold ${sale.paymentMode === 'Pending' ? 'text-red-500' : 'text-gray-900'}`}>₹{sale.amount.toLocaleString('en-IN')}</p>
+                  <button onClick={() => openEditSale(sale)} className="text-gray-300 hover:text-primary cursor-pointer" title="Edit">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -586,6 +631,7 @@ export default function DaybookPage() {
                 <option value="Cash">Cash</option>
                 <option value="Card">Card</option>
                 <option value="UPI">UPI</option>
+                <option value="Pending">Pending</option>
               </select>
             </div>
           </div>
@@ -639,6 +685,91 @@ export default function DaybookPage() {
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowExpenseModal(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
             <button type="submit" className="px-4 py-2 text-sm bg-danger text-white rounded-lg hover:bg-red-600 cursor-pointer">Add Expense</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Sale Modal */}
+      <Modal isOpen={showEditSaleModal} onClose={() => setShowEditSaleModal(false)} title="Edit Sale">
+        <form onSubmit={handleEditSale} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Service *</label>
+              <select
+                value={editSaleForm.serviceTypeId}
+                onChange={(e) => setEditSaleForm(prev => ({ ...prev, serviceTypeId: e.target.value }))}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">Select service</option>
+                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹) *</label>
+              <input
+                type="number" min="1" step="any"
+                value={editSaleForm.amount}
+                onChange={(e) => setEditSaleForm(prev => ({ ...prev, amount: e.target.value }))}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Number</label>
+              <input
+                type="text"
+                value={editSaleForm.vehicleNumber}
+                onChange={(e) => setEditSaleForm(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                placeholder="e.g. MH12AB1234"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+              <select
+                value={editSaleForm.vehicleType}
+                onChange={(e) => setEditSaleForm(prev => ({ ...prev, vehicleType: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="Hatchback">Hatchback</option>
+                <option value="Sedan">Sedan</option>
+                <option value="SUV">SUV</option>
+                <option value="MUV">MUV</option>
+                <option value="Crossover">Crossover</option>
+                <option value="Convertible">Convertible</option>
+                <option value="Bike">Bike</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payment *</label>
+            <select
+              value={editSaleForm.paymentMode}
+              onChange={(e) => setEditSaleForm(prev => ({ ...prev, paymentMode: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="UPI">UPI</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <input
+              type="text"
+              value={editSaleForm.notes}
+              onChange={(e) => setEditSaleForm(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Optional notes..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={() => setShowEditSaleModal(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-light cursor-pointer">Save Changes</button>
           </div>
         </form>
       </Modal>

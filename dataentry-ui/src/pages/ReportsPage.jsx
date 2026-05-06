@@ -195,8 +195,9 @@ export default function ReportsPage() {
 
           {/* Monthly-only salary & net income cards */}
           {tab === 'monthly' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <StatCard title="Total Salaries Paid" value={data.grandTotalSalaries ?? 0} icon={Banknote} color="warning" />
+              <StatCard title="Monthly Pending" value={data.grandTotalPending ?? 0} icon={Receipt} color="danger" />
               <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-medium text-gray-500">Net Monthly Income</p>

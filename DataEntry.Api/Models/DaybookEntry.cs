@@ -41,6 +41,9 @@ public class DaybookEntry
     public decimal TotalUpiCollected => Sales.Where(s => s.PaymentMode == "UPI").Sum(s => s.Amount);
 
     [NotMapped]
+    public decimal TotalPendingCollected => Sales.Where(s => s.PaymentMode == "Pending").Sum(s => s.Amount);
+
+    [NotMapped]
     public decimal TotalExpenses => Expenses.Sum(e => e.Amount);
 
     [NotMapped]

@@ -99,6 +99,7 @@ public record DaybookEntryDto(
     decimal TotalCashCollected,
     decimal TotalCardCollected,
     decimal TotalUpiCollected,
+    decimal TotalPendingCollected,
     decimal TotalExpenses,
     decimal ClosingBalance,
     string? Notes,
@@ -137,6 +138,16 @@ public record AddSaleRequest(
     string? Notes
 );
 
+public record UpdateSaleRequest(
+    int? CustomerId,
+    int? ServiceTypeId,
+    string? VehicleNumber,
+    string? VehicleType,
+    decimal? Amount,
+    string? PaymentMode,
+    string? Notes
+);
+
 // === Expense ===
 public record ExpenseDto(
     int Id,
@@ -158,6 +169,7 @@ public record DailySummaryDto(
     decimal GrandTotalCash,
     decimal GrandTotalCard,
     decimal GrandTotalUpi,
+    decimal GrandTotalPending,
     decimal GrandTotalExpenses
 );
 
@@ -169,6 +181,7 @@ public record EmployeeDaySummaryDto(
     decimal TotalCash,
     decimal TotalCard,
     decimal TotalUpi,
+    decimal TotalPending,
     decimal TotalExpenses,
     decimal ClosingBalance
 );
@@ -181,6 +194,7 @@ public record MonthlySummaryDto(
     decimal GrandTotalCash,
     decimal GrandTotalExpenses,
     decimal GrandTotalSalaries,
+    decimal GrandTotalPending,
     decimal NetIncome
 );
 
@@ -261,5 +275,6 @@ public record DailyCombinedSalesDto(
     decimal TotalCash,
     decimal TotalCard,
     decimal TotalUpi,
+    decimal TotalPending,
     int TransactionCount
 );

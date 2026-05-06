@@ -63,7 +63,7 @@ public class DaybookService
         var entry = await _db.DaybookEntries.FindAsync(daybookId);
         if (entry == null || (entry.IsFinalized && !bypassFinalized)) return null;
 
-        var validModes = new[] { "Cash", "Card", "UPI" };
+        var validModes = new[] { "Cash", "Card", "UPI", "Pending" };
         if (!validModes.Contains(request.PaymentMode)) return null;
 
         var sale = new SaleTransaction
@@ -183,6 +183,7 @@ public class DaybookService
             entry.TotalCashCollected,
             entry.TotalCardCollected,
             entry.TotalUpiCollected,
+            entry.TotalPendingCollected,
             entry.TotalExpenses,
             entry.ClosingBalance,
             entry.Notes,
@@ -199,6 +200,39 @@ public class DaybookService
             s.ServiceType?.Name ?? "", s.VehicleNumber, s.VehicleType,
             s.Amount, s.PaymentMode, s.Notes, s.CreatedAt
         );
+    }
+
+    public async Task<SaleTransactionDto?> UpdateSaleAsync(int saleId, UpdateSaleRequest request, bool bypassFinalized = false)
+    {
+        var sale = await _db.SaleTransactions
+            .Include(s => s.DaybookEntry)
+            .Include(s => s.Customer)
+            .Include(s => s.ServiceType)
+            .FirstOrDefaultAsync(s => s.Id == saleId);
+
+        if (sale == null || (sale.DaybookEntry.IsFinalized && !bypassFinalized)) return null;
+
+        var validModes = new[] { "Cash", "Card", "UPI", "Pending" };
+        if (request.PaymentMode != null && !validModes.Contains(request.PaymentMode)) return null;
+
+        if (request.CustomerId.HasValue) sale.CustomerId = request.CustomerId == 0 ? null : request.CustomerId;
+        if (request.ServiceTypeId.HasValue) sale.ServiceTypeId = request.ServiceTypeId.Value;
+        if (request.VehicleNumber != null) sale.VehicleNumber = string.IsNullOrEmpty(request.VehicleNumber) ? null : request.VehicleNumber;
+        if (request.VehicleType != null) sale.VehicleType = string.IsNullOrEmpty(request.VehicleType) ? null : request.VehicleType;
+        if (request.Amount.HasValue) sale.Amount = request.Amount.Value;
+        if (request.PaymentMode != null) sale.PaymentMode = request.PaymentMode;
+        if (request.Notes != null) sale.Notes = string.IsNullOrEmpty(request.Notes) ? null : request.Notes;
+
+        sale.DaybookEntry.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        // Reload with navigation
+        var loaded = await _db.SaleTransactions
+            .Include(s => s.Customer)
+            .Include(s => s.ServiceType)
+            .FirstAsync(s => s.Id == saleId);
+
+        return MapSaleToDto(loaded);
     }
 
     public async Task<DailyCombinedSalesDto> GetAllSalesForDateAsync(DateOnly date)
@@ -227,6 +261,7 @@ public class DaybookService
             sales.Where(s => s.PaymentMode == "Cash").Sum(s => s.Amount),
             sales.Where(s => s.PaymentMode == "Card").Sum(s => s.Amount),
             sales.Where(s => s.PaymentMode == "UPI").Sum(s => s.Amount),
+            sales.Where(s => s.PaymentMode == "Pending").Sum(s => s.Amount),
             sales.Count
         );
     }

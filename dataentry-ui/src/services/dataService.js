@@ -10,6 +10,7 @@ export const daybookService = {
   getAllSales: (date) => api.get('/daybook/all-sales', { params: { date } }),
   updateOpeningBalance: (id, openingBalance) => api.put(`/daybook/${id}/opening-balance`, { openingBalance }),
   addSale: (id, sale) => api.post(`/daybook/${id}/sales`, sale),
+  updateSale: (saleId, data) => api.put(`/daybook/sales/${saleId}`, data),
   deleteSale: (saleId) => api.delete(`/daybook/sales/${saleId}`),
   addExpense: (id, expense) => api.post(`/daybook/${id}/expenses`, expense),
   deleteExpense: (expenseId) => api.delete(`/daybook/expenses/${expenseId}`),

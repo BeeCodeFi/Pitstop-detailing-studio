@@ -27,7 +27,7 @@ public class ReportService
         var employeeSummaries = entries.Select(e => new EmployeeDaySummaryDto(
             e.EmployeeId, e.Employee.Name, e.OpeningBalance,
             e.TotalSales, e.TotalCashCollected, e.TotalCardCollected,
-            e.TotalUpiCollected, e.TotalExpenses, e.ClosingBalance
+            e.TotalUpiCollected, e.TotalPendingCollected, e.TotalExpenses, e.ClosingBalance
         )).ToList();
 
         return new DailySummaryDto(
@@ -36,6 +36,7 @@ public class ReportService
             employeeSummaries.Sum(s => s.TotalCash),
             employeeSummaries.Sum(s => s.TotalCard),
             employeeSummaries.Sum(s => s.TotalUpi),
+            employeeSummaries.Sum(s => s.TotalPending),
             employeeSummaries.Sum(s => s.TotalExpenses)
         );
     }
@@ -70,6 +71,7 @@ public class ReportService
         var grandTotalSales = dailyTotals.Sum(d => d.TotalSales);
         var grandTotalExpenses = dailyTotals.Sum(d => d.TotalExpenses);
         var grandTotalSalaries = salaries.Sum(s => s.Amount);
+        var grandTotalPending = entries.SelectMany(e => e.Sales).Where(s => s.PaymentMode == "Pending").Sum(s => s.Amount);
 
         return new MonthlySummaryDto(
             year, month, dailyTotals,
@@ -77,6 +79,7 @@ public class ReportService
             dailyTotals.Sum(d => d.TotalCash),
             grandTotalExpenses,
             grandTotalSalaries,
+            grandTotalPending,
             grandTotalSales - grandTotalExpenses - grandTotalSalaries
         );
     }
