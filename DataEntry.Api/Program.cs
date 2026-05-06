@@ -43,9 +43,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
+        var envOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS")
+            ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        var configuredOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+        var origins = (envOrigins is { Length: > 0 } ? envOrigins : configuredOrigins)
+            ?? new[] { "http://localhost:5173" };
+
         policy.WithOrigins(
-                builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
-                ?? new[] { "http://localhost:5173" })
+                origins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -69,6 +75,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapControllers();
 
 app.Run();
