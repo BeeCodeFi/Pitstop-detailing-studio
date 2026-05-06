@@ -14,12 +14,23 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     if (!string.IsNullOrEmpty(databaseUrl))
     {
-        // Render provides DATABASE_URL as postgres://user:pass@host:port/db
-        // Npgsql expects Host=...;Database=...;Username=...;Password=...
-        var uri = new Uri(databaseUrl);
-        var userInfo = uri.UserInfo.Split(':');
-        var connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
-        options.UseNpgsql(connectionString);
+        string npgsqlConnectionString;
+        if (databaseUrl.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+            databaseUrl.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        {
+            // Render provides DATABASE_URL as postgres://user:pass@host:port/db
+            // Use Split(':', 2) so passwords containing ':' are preserved
+            var uri = new Uri(databaseUrl);
+            var userInfo = uri.UserInfo.Split(':', 2);
+            var port = uri.Port > 0 ? uri.Port : 5432;
+            npgsqlConnectionString = $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=Require;Trust Server Certificate=true";
+        }
+        else
+        {
+            // Already in Npgsql key=value format (some Render plans output this)
+            npgsqlConnectionString = databaseUrl;
+        }
+        options.UseNpgsql(npgsqlConnectionString);
     }
     else
     {
@@ -92,6 +103,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+    var dbProvider = db.Database.ProviderName ?? "unknown";
+    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    logger.LogInformation("DB provider: {Provider} | DATABASE_URL set: {IsSet}", dbProvider, !string.IsNullOrEmpty(dbUrl));
     try
     {
         db.Database.Migrate();
@@ -113,7 +127,11 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/health", () => Results.Ok(new {
+    status = "ok",
+    database = string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DATABASE_URL")) ? "sqlite" : "postgresql",
+    timestamp = DateTime.UtcNow
+}));
 app.MapControllers();
 
 app.Run();
