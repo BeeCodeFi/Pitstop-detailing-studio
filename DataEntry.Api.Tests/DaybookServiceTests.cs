@@ -109,7 +109,7 @@ public class DaybookServiceTests : IDisposable
         await _service.AddExpenseAsync(entry.Id, new AddExpenseRequest("Cleaning supplies", 300));
 
         var result = await _service.GetOrCreateAsync(1, date);
-        // Closing = 1000 + 500 (cash) - 300 = 1200
+        // Closing = 1000 + 500 (total sales) - 300 = 1200
         result.ClosingBalance.Should().Be(1200);
         result.TotalExpenses.Should().Be(300);
     }
@@ -153,19 +153,19 @@ public class DaybookServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task NonCashSales_DoNotAffectClosingBalance()
+    public async Task AllSales_AffectClosingBalance()
     {
         var date = new DateOnly(2026, 4, 29);
         var entry = await _service.GetOrCreateAsync(1, date);
         await _service.UpdateOpeningBalanceAsync(entry.Id, 1000);
 
-        // Card and UPI sales should NOT affect cash closing balance
+        // All sales (Cash, Card, UPI) contribute to closing balance
         await _service.AddSaleAsync(entry.Id, new AddSaleRequest(null, 1, null, null, 2000, "Card", null));
         await _service.AddSaleAsync(entry.Id, new AddSaleRequest(null, 1, null, null, 1500, "UPI", null));
 
         var result = await _service.GetOrCreateAsync(1, date);
         result.TotalSales.Should().Be(3500);
-        result.ClosingBalance.Should().Be(1000); // Only opening, no cash sales
+        result.ClosingBalance.Should().Be(4500); // Opening + all sales: 1000 + 3500
     }
 
     public void Dispose()

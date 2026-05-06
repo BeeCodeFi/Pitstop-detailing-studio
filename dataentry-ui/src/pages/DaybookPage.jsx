@@ -189,9 +189,9 @@ export default function DaybookPage() {
       <div className="bg-gradient-to-r from-primary to-primary-light rounded-xl p-5 mb-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-white/80">Closing Cash Balance</p>
+            <p className="text-sm text-white/80">Closing Balance</p>
             <p className="text-3xl font-bold mt-1">₹{daybook.closingBalance.toLocaleString('en-IN')}</p>
-            <p className="text-xs text-white/60 mt-1">Opening ({daybook.openingBalance}) + Cash ({daybook.totalCashCollected}) - Expenses ({daybook.totalExpenses})</p>
+            <p className="text-xs text-white/60 mt-1">Opening ({daybook.openingBalance}) + Sales ({daybook.totalSales}) - Expenses ({daybook.totalExpenses})</p>
           </div>
           {!daybook.isFinalized && isAdmin && (
             <button

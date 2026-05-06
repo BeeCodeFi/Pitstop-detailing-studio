@@ -44,5 +44,5 @@ public class DaybookEntry
     public decimal TotalExpenses => Expenses.Sum(e => e.Amount);
 
     [NotMapped]
-    public decimal ClosingBalance => OpeningBalance + TotalCashCollected - TotalExpenses;
+    public decimal ClosingBalance => OpeningBalance + TotalSales - TotalExpenses;
 }
