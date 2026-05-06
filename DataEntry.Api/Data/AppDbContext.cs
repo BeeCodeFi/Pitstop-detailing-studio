@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<DaybookEntry> DaybookEntries => Set<DaybookEntry>();
     public DbSet<SaleTransaction> SaleTransactions => Set<SaleTransaction>();
     public DbSet<Expense> Expenses => Set<Expense>();
+    public DbSet<SalaryPayment> SalaryPayments => Set<SalaryPayment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -47,6 +48,13 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(s => s.CustomerId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        // Salary payments belong to an employee
+        modelBuilder.Entity<SalaryPayment>()
+            .HasOne(sp => sp.Employee)
+            .WithMany()
+            .HasForeignKey(sp => sp.EmployeeId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // Seed default service types
         modelBuilder.Entity<ServiceType>().HasData(

@@ -16,7 +16,7 @@ public class Customer
     public string? VehicleNumber { get; set; }
 
     [MaxLength(30)]
-    public string? VehicleType { get; set; } // Car, SUV, Bike, Truck
+    public string? VehicleType { get; set; } // Hatchback, Sedan, SUV, MUV, Crossover, Convertible, Bike
 
     [MaxLength(500)]
     public string? Notes { get; set; }

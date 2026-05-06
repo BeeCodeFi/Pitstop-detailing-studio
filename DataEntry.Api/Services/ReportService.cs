@@ -51,6 +51,10 @@ public class ReportService
             .Where(d => d.Date >= startDate && d.Date <= endDate)
             .ToListAsync();
 
+        var salaries = await _db.SalaryPayments
+            .Where(s => s.Date >= startDate && s.Date <= endDate)
+            .ToListAsync();
+
         var dailyTotals = entries
             .GroupBy(e => e.Date)
             .Select(g => new DayTotalDto(
@@ -63,11 +67,17 @@ public class ReportService
             .OrderBy(d => d.Date)
             .ToList();
 
+        var grandTotalSales = dailyTotals.Sum(d => d.TotalSales);
+        var grandTotalExpenses = dailyTotals.Sum(d => d.TotalExpenses);
+        var grandTotalSalaries = salaries.Sum(s => s.Amount);
+
         return new MonthlySummaryDto(
             year, month, dailyTotals,
-            dailyTotals.Sum(d => d.TotalSales),
+            grandTotalSales,
             dailyTotals.Sum(d => d.TotalCash),
-            dailyTotals.Sum(d => d.TotalExpenses)
+            grandTotalExpenses,
+            grandTotalSalaries,
+            grandTotalSales - grandTotalExpenses - grandTotalSalaries
         );
     }
 

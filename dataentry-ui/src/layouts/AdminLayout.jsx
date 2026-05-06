@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, BookOpen, Users, Wrench, BarChart3,
-  UserCog, LogOut, Menu, X
+  UserCog, LogOut, Menu, X, Banknote
 } from 'lucide-react';
 import { useState } from 'react';
 import logo from '../assets/logo.jpg';
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/admin/services', icon: Wrench, label: 'Services', adminOnly: true },
   { to: '/admin/reports', icon: BarChart3, label: 'Reports' },
   { to: '/admin/employees', icon: UserCog, label: 'Employees', adminOnly: true },
+  { to: '/admin/salary', icon: Banknote, label: 'Salary', adminOnly: true },
 ];
 
 export default function AdminLayout() {

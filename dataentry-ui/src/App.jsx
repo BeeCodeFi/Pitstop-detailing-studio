@@ -8,6 +8,7 @@ import CustomersPage from './pages/CustomersPage';
 import ReportsPage from './pages/ReportsPage';
 import ServicesPage from './pages/ServicesPage';
 import EmployeesPage from './pages/EmployeesPage';
+import SalaryPage from './pages/SalaryPage';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -41,6 +42,7 @@ function App() {
         <Route path="reports" element={<ReportsPage />} />
         <Route path="services" element={<AdminRoute><ServicesPage /></AdminRoute>} />
         <Route path="employees" element={<AdminRoute><EmployeesPage /></AdminRoute>} />
+        <Route path="salary" element={<AdminRoute><SalaryPage /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
     </Routes>

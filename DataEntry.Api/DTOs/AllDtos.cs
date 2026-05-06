@@ -179,7 +179,9 @@ public record MonthlySummaryDto(
     List<DayTotalDto> DailyTotals,
     decimal GrandTotalSales,
     decimal GrandTotalCash,
-    decimal GrandTotalExpenses
+    decimal GrandTotalExpenses,
+    decimal GrandTotalSalaries,
+    decimal NetIncome
 );
 
 public record DayTotalDto(
@@ -209,4 +211,28 @@ public record DaybookEntrySummaryDto(
     decimal TotalExpenses,
     decimal ClosingBalance,
     int TransactionCount
+);
+
+// === Salary ===
+public record SalaryPaymentDto(
+    int Id,
+    int EmployeeId,
+    string EmployeeName,
+    decimal Amount,
+    DateOnly Date,
+    string? Notes,
+    DateTime CreatedAt
+);
+
+public record CreateSalaryPaymentRequest(
+    [Required] int EmployeeId,
+    [Required] decimal Amount,
+    [Required] DateOnly Date,
+    string? Notes
+);
+
+public record UpdateSalaryPaymentRequest(
+    decimal? Amount,
+    DateOnly? Date,
+    string? Notes
 );

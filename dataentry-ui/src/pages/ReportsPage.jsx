@@ -5,7 +5,7 @@ import DataTable from '../components/DataTable';
 import StatCard from '../components/StatCard';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { TrendingUp, Wallet, Receipt, Download, Trash2 } from 'lucide-react';
+import { TrendingUp, Wallet, Receipt, Download, Trash2, Banknote, IndianRupee } from 'lucide-react';
 
 export default function ReportsPage() {
   const { isAdmin, user } = useAuth();
@@ -186,6 +186,25 @@ export default function ReportsPage() {
             <StatCard title="Total Cash" value={data.grandTotalCash ?? data.totalCash ?? 0} icon={Wallet} color="success" />
             <StatCard title="Total Expenses" value={data.grandTotalExpenses ?? data.totalExpenses ?? 0} icon={Receipt} color="danger" />
           </div>
+
+          {/* Monthly-only salary & net income cards */}
+          {tab === 'monthly' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <StatCard title="Total Salaries Paid" value={data.grandTotalSalaries ?? 0} icon={Banknote} color="warning" />
+              <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-gray-500">Net Monthly Income</p>
+                  <div className={`p-2 rounded-lg ${(data.netIncome ?? 0) >= 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
+                    <IndianRupee className="w-5 h-5" />
+                  </div>
+                </div>
+                <p className={`text-2xl font-bold ${(data.netIncome ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
+                  ₹{(data.netIncome ?? 0).toLocaleString('en-IN')}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Sales − Expenses − Salaries</p>
+              </div>
+            </div>
+          )}
 
           {/* Data table */}
           {tab === 'daily' && data.employees && (

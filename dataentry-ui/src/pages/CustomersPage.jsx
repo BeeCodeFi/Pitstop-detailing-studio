@@ -13,7 +13,7 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', phone: '', vehicleNumber: '', vehicleType: 'Car', notes: '' });
+  const [form, setForm] = useState({ name: '', phone: '', vehicleNumber: '', vehicleType: 'Hatchback', notes: '' });
 
   useEffect(() => { loadCustomers(); }, []);
 
@@ -36,7 +36,7 @@ export default function CustomersPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', phone: '', vehicleNumber: '', vehicleType: 'Car', notes: '' });
+    setForm({ name: '', phone: '', vehicleNumber: '', vehicleType: 'Hatchback', notes: '' });
     setShowModal(true);
   };
 
@@ -147,10 +147,13 @@ export default function CustomersPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
               <select value={form.vehicleType} onChange={(e) => setForm(p => ({ ...p, vehicleType: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none">
-                <option value="Car">Car</option>
+                <option value="Hatchback">Hatchback</option>
+                <option value="Sedan">Sedan</option>
                 <option value="SUV">SUV</option>
+                <option value="MUV">MUV</option>
+                <option value="Crossover">Crossover</option>
+                <option value="Convertible">Convertible</option>
                 <option value="Bike">Bike</option>
-                <option value="Truck">Truck</option>
               </select>
             </div>
             <div>

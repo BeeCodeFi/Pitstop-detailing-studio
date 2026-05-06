@@ -47,3 +47,10 @@ export const reportService = {
 export const adminService = {
   resetData: () => api.delete('/admin/reset'),
 };
+
+export const salaryService = {
+  getAll: (year, month) => api.get('/salary', { params: { year, month } }),
+  create: (data) => api.post('/salary', data),
+  update: (id, data) => api.put(`/salary/${id}`, data),
+  delete: (id) => api.delete(`/salary/${id}`),
+};

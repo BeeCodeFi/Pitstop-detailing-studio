@@ -21,7 +21,7 @@ export default function DaybookPage() {
 
   const EMPTY_LINE = () => ({ serviceTypeId: '', amount: '' });
   const [saleForm, setSaleForm] = useState({
-    customerId: '', vehicleNumber: '', vehicleType: 'Car',
+    customerId: '', vehicleNumber: '', vehicleType: 'Hatchback',
     paymentMode: 'Cash', notes: '',
     serviceLines: [EMPTY_LINE()]
   });
@@ -126,7 +126,7 @@ export default function DaybookPage() {
       }
       toast.success(validLines.length > 1 ? `${validLines.length} sales added` : 'Sale added');
       setShowSaleModal(false);
-      setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] });
+      setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Hatchback', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] });
       setCustomerSearch('');
       loadDaybook();
     } catch (err) {
@@ -395,7 +395,7 @@ export default function DaybookPage() {
       </div>
 
       {/* Add Sale Modal */}
-      <Modal isOpen={showSaleModal} onClose={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} title="Add Sale" size="md">
+      <Modal isOpen={showSaleModal} onClose={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Hatchback', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} title="Add Sale" size="md">
         <form onSubmit={handleAddSale} className="space-y-4">
           {/* Customer search */}
           <div>
@@ -511,10 +511,13 @@ export default function DaybookPage() {
                 onChange={(e) => setSaleForm(prev => ({ ...prev, vehicleType: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
               >
-                <option value="Car">Car</option>
+                <option value="Hatchback">Hatchback</option>
+                <option value="Sedan">Sedan</option>
                 <option value="SUV">SUV</option>
+                <option value="MUV">MUV</option>
+                <option value="Crossover">Crossover</option>
+                <option value="Convertible">Convertible</option>
                 <option value="Bike">Bike</option>
-                <option value="Truck">Truck</option>
               </select>
             </div>
             <div>
@@ -543,7 +546,7 @@ export default function DaybookPage() {
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Car', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
+            <button type="button" onClick={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Hatchback', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
             <button type="submit" className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-dark cursor-pointer">
               {saleForm.serviceLines.filter(l => l.serviceTypeId).length > 1 ? `Add ${saleForm.serviceLines.filter(l => l.serviceTypeId).length} Sales` : 'Add Sale'}
             </button>
