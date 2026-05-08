@@ -125,7 +125,8 @@ public record SaleTransactionDto(
     decimal Amount,
     string PaymentMode,
     string? Notes,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int VehicleVisitCount = 0
 );
 
 public record AddSaleRequest(
@@ -265,7 +266,8 @@ public record SaleWithEmployeeDto(
     decimal Amount,
     string PaymentMode,
     string? Notes,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int VehicleVisitCount = 0
 );
 
 public record DailyCombinedSalesDto(

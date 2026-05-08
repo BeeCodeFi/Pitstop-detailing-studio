@@ -44,7 +44,7 @@ public class DaybookService
                 .FirstAsync(d => d.Id == entry.Id);
         }
 
-        return MapToDto(entry);
+        return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
 
     public async Task<DaybookEntryDto?> UpdateOpeningBalanceAsync(int daybookId, decimal openingBalance)
@@ -55,7 +55,7 @@ public class DaybookService
         entry.OpeningBalance = openingBalance;
         entry.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return MapToDto(entry);
+        return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
 
     public async Task<SaleTransactionDto?> AddSaleAsync(int daybookId, AddSaleRequest request, bool bypassFinalized = false)
@@ -146,7 +146,7 @@ public class DaybookService
         entry.IsFinalized = true;
         entry.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return MapToDto(entry);
+        return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
 
     private async Task<decimal> GetCarryForwardBalance(int employeeId, DateOnly date)
@@ -161,6 +161,26 @@ public class DaybookService
         return previousEntry?.ClosingBalance ?? 0;
     }
 
+    private async Task<Dictionary<string, int>> GetVehicleVisitCounts(DaybookEntry entry)
+    {
+        var vehicleNumbers = entry.Sales
+            .Where(s => !string.IsNullOrWhiteSpace(s.VehicleNumber))
+            .Select(s => s.VehicleNumber!.Trim().ToUpper())
+            .Distinct()
+            .ToList();
+
+        if (!vehicleNumbers.Any()) return new Dictionary<string, int>();
+
+        var counts = await _db.SaleTransactions
+            .Include(s => s.DaybookEntry)
+            .Where(s => s.VehicleNumber != null && vehicleNumbers.Contains(s.VehicleNumber.Trim().ToUpper()))
+            .GroupBy(s => s.VehicleNumber!.Trim().ToUpper())
+            .Select(g => new { Vehicle = g.Key, Count = g.Select(s => s.DaybookEntry.Date).Distinct().Count() })
+            .ToDictionaryAsync(x => x.Vehicle, x => x.Count);
+
+        return counts;
+    }
+
     private async Task<DaybookEntry?> LoadEntry(int daybookId)
     {
         return await _db.DaybookEntries
@@ -171,7 +191,7 @@ public class DaybookService
             .FirstOrDefaultAsync(d => d.Id == daybookId);
     }
 
-    public static DaybookEntryDto MapToDto(DaybookEntry entry)
+    public static DaybookEntryDto MapToDto(DaybookEntry entry, Dictionary<string, int>? vehicleVisitCounts = null)
     {
         return new DaybookEntryDto(
             entry.Id,
@@ -188,17 +208,23 @@ public class DaybookService
             entry.ClosingBalance,
             entry.Notes,
             entry.IsFinalized,
-            entry.Sales.Select(MapSaleToDto).ToList(),
+            entry.Sales.Select(s => MapSaleToDto(s, GetVisitCount(s.VehicleNumber, vehicleVisitCounts))).ToList(),
             entry.Expenses.Select(e => new ExpenseDto(e.Id, e.Description, e.Amount, e.CreatedAt)).ToList()
         );
     }
 
-    private static SaleTransactionDto MapSaleToDto(SaleTransaction s)
+    private static int GetVisitCount(string? vehicleNumber, Dictionary<string, int>? counts)
+    {
+        if (string.IsNullOrWhiteSpace(vehicleNumber) || counts == null) return 0;
+        return counts.TryGetValue(vehicleNumber.Trim().ToUpper(), out var count) ? count : 0;
+    }
+
+    private static SaleTransactionDto MapSaleToDto(SaleTransaction s, int visitCount = 0)
     {
         return new SaleTransactionDto(
             s.Id, s.CustomerId, s.Customer?.Name, s.ServiceTypeId,
             s.ServiceType?.Name ?? "", s.VehicleNumber, s.VehicleType,
-            s.Amount, s.PaymentMode, s.Notes, s.CreatedAt
+            s.Amount, s.PaymentMode, s.Notes, s.CreatedAt, visitCount
         );
     }
 
@@ -245,13 +271,32 @@ public class DaybookService
             .Where(d => d.Date == date)
             .ToListAsync();
 
+        var allSalesEntries = entries.SelectMany(e => e.Sales).ToList();
+        var vehicleNumbers = allSalesEntries
+            .Where(s => !string.IsNullOrWhiteSpace(s.VehicleNumber))
+            .Select(s => s.VehicleNumber!.Trim().ToUpper())
+            .Distinct()
+            .ToList();
+
+        var vehicleVisitCounts = new Dictionary<string, int>();
+        if (vehicleNumbers.Any())
+        {
+            vehicleVisitCounts = await _db.SaleTransactions
+                .Include(s => s.DaybookEntry)
+                .Where(s => s.VehicleNumber != null && vehicleNumbers.Contains(s.VehicleNumber.Trim().ToUpper()))
+                .GroupBy(s => s.VehicleNumber!.Trim().ToUpper())
+                .Select(g => new { Vehicle = g.Key, Count = g.Select(s => s.DaybookEntry.Date).Distinct().Count() })
+                .ToDictionaryAsync(x => x.Vehicle, x => x.Count);
+        }
+
         var sales = entries
             .SelectMany(e => e.Sales.Select(s => new SaleWithEmployeeDto(
                 s.Id, e.EmployeeId, e.Employee.Name,
                 s.CustomerId, s.Customer?.Name,
                 s.ServiceTypeId, s.ServiceType?.Name ?? "",
                 s.VehicleNumber, s.VehicleType,
-                s.Amount, s.PaymentMode, s.Notes, s.CreatedAt
+                s.Amount, s.PaymentMode, s.Notes, s.CreatedAt,
+                GetVisitCount(s.VehicleNumber, vehicleVisitCounts)
             )))
             .OrderBy(s => s.CreatedAt)
             .ToList();

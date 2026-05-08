@@ -394,6 +394,11 @@ export default function DaybookPage() {
                     {sale.customerName || 'Walk-in'}
                     {sale.vehicleNumber ? ` • ${sale.vehicleNumber}` : ''}
                     {sale.vehicleType ? ` • ${sale.vehicleType}` : ''}
+                    {sale.vehicleVisitCount > 1 && (
+                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                        Visit #{sale.vehicleVisitCount}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -429,6 +434,11 @@ export default function DaybookPage() {
                     {sale.customerName || 'Walk-in'}
                     {sale.vehicleNumber ? ` • ${sale.vehicleNumber}` : ''}
                     {sale.vehicleType ? ` • ${sale.vehicleType}` : ''}
+                    {sale.vehicleVisitCount > 1 && (
+                      <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
+                        Visit #{sale.vehicleVisitCount}
+                      </span>
+                    )}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
