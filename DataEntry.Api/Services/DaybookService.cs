@@ -45,15 +45,21 @@ public class DaybookService
         }
         else if (!entry.IsFinalized)
         {
-            // For admin only: recalculate opening balance from the shop's combined closing balance
-            // in case the previous day's sales changed after this entry was created.
-            // Employees always have 0 opening balance — nothing to recalculate.
-            var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
-            if (entry.OpeningBalance != correctOpeningBalance)
+            // Only recalculate opening balance for the current month's non-finalized entries.
+            // Past month entries keep their stored opening balance — navigating back to a previous
+            // month should show the accumulated values from that month, not reset them.
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            bool isCurrentMonth = entry.Date.Year == today.Year && entry.Date.Month == today.Month;
+
+            if (isCurrentMonth)
             {
-                entry.OpeningBalance = correctOpeningBalance;
-                entry.UpdatedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+                var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
+                if (entry.OpeningBalance != correctOpeningBalance)
+                {
+                    entry.OpeningBalance = correctOpeningBalance;
+                    entry.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                }
             }
         }
 
@@ -170,26 +176,33 @@ public class DaybookService
         if (employee == null || employee.Role != "Admin")
             return 0;
 
-        // Find the most recent date before the requested date that has any daybook entries
-        var previousDate = await _db.DaybookEntries
-            .Where(d => d.Date < date)
-            .OrderByDescending(d => d.Date)
-            .Select(d => (DateOnly?)d.Date)
-            .FirstOrDefaultAsync();
-
-        if (previousDate == null) return 0;
-
-        // Calculate the combined shop closing balance from all employees on that day
-        var previousEntries = await _db.DaybookEntries
+        // Find the admin's most recent entry before the requested date.
+        // We look for the ADMIN's own entry specifically — not just any employee entry —
+        // so that the accumulated opening balance is never lost across date gaps.
+        var previousAdminEntry = await _db.DaybookEntries
+            .Include(d => d.Employee)
             .Include(d => d.Sales)
             .Include(d => d.Expenses)
-            .Where(d => d.Date == previousDate)
+            .Where(d => d.Date < date && d.Employee.Role == "Admin")
+            .OrderByDescending(d => d.Date)
+            .FirstOrDefaultAsync();
+
+        if (previousAdminEntry == null) return 0;
+
+        // Each month starts fresh with 0 opening balance — no carry-over across months.
+        if (previousAdminEntry.Date.Month != date.Month || previousAdminEntry.Date.Year != date.Year)
+            return 0;
+
+        // Include all employees' sales and expenses from that same date
+        var allEntriesForDate = await _db.DaybookEntries
+            .Include(d => d.Sales)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date == previousAdminEntry.Date)
             .ToListAsync();
 
-        var combinedOpening = previousEntries.Max(e => e.OpeningBalance);
-        var totalSales = previousEntries.Sum(e => e.TotalSales);
-        var totalExpenses = previousEntries.Sum(e => e.TotalExpenses);
-        return combinedOpening + totalSales - totalExpenses;
+        var totalSales = allEntriesForDate.Sum(e => e.TotalSales);
+        var totalExpenses = allEntriesForDate.Sum(e => e.TotalExpenses);
+        return previousAdminEntry.OpeningBalance + totalSales - totalExpenses;
     }
 
     private async Task<Dictionary<string, int>> GetVehicleVisitCounts(DaybookEntry entry)

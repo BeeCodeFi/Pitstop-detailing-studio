@@ -30,6 +30,9 @@ export default function ReportsPage() {
     return d.toISOString().split('T')[0];
   });
   const [exportTo, setExportTo] = useState(new Date().toISOString().split('T')[0]);
+  const [exportEmployee, setExportEmployee] = useState('');
+  const [exportType, setExportType] = useState('All');
+  const [exportPaymentMode, setExportPaymentMode] = useState('');
   const [exporting, setExporting] = useState(false);
   const [resetting, setResetting] = useState(false);
 
@@ -70,7 +73,12 @@ export default function ReportsPage() {
   const handleExportCsv = async () => {
     setExporting(true);
     try {
-      const response = await reportService.exportCsv(exportFrom, exportTo);
+      const response = await reportService.exportCsv(
+        exportFrom, exportTo,
+        exportEmployee || undefined,
+        exportType !== 'All' ? exportType : undefined,
+        exportPaymentMode || undefined
+      );
       const url = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }));
       const a = document.createElement('a');
       a.href = url;
@@ -267,7 +275,9 @@ export default function ReportsPage() {
       {/* Export CSV Modal */}
       <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="Export Data as CSV">
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">Select a date range to export all sales and expenses as a CSV file.</p>
+          <p className="text-sm text-gray-500">Filter and export sales/expenses as a CSV file.</p>
+
+          {/* Date range */}
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
@@ -289,6 +299,61 @@ export default function ReportsPage() {
               />
             </div>
           </div>
+
+          {/* Data type */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data to Export</label>
+            <div className="flex gap-2">
+              {['All', 'Sales', 'Expenses'].map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setExportType(opt)}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
+                    exportType === opt
+                      ? 'bg-primary text-white border-primary'
+                      : 'bg-white text-gray-600 border-gray-300 hover:border-primary'
+                  }`}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Employee filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+            <select
+              value={exportEmployee}
+              onChange={(e) => setExportEmployee(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+            >
+              <option value="">All Employees</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Payment mode filter (only relevant for sales) */}
+          {exportType !== 'Expenses' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
+              <select
+                value={exportPaymentMode}
+                onChange={(e) => setExportPaymentMode(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+              >
+                <option value="">All Modes</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="UPI">UPI</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={() => setShowExportModal(false)} className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Cancel</button>
             <button

@@ -49,10 +49,15 @@ public class ReportController : ControllerBase
 
     [HttpGet("export")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> ExportCsv([FromQuery] DateOnly from, [FromQuery] DateOnly to)
+    public async Task<IActionResult> ExportCsv(
+        [FromQuery] DateOnly from,
+        [FromQuery] DateOnly to,
+        [FromQuery] int? employeeId = null,
+        [FromQuery] string? type = null,
+        [FromQuery] string? paymentMode = null)
     {
         if (from > to) return BadRequest(new { message = "From date must be before to date." });
-        var csv = await _reportService.ExportCsvAsync(from, to);
+        var csv = await _reportService.ExportCsvAsync(from, to, employeeId, type, paymentMode);
         return File(csv, "text/csv", $"daybook_export_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.csv");
     }
 }

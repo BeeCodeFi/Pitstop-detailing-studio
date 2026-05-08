@@ -109,21 +109,36 @@ public class ReportService
         );
     }
 
-    public async Task<byte[]> ExportCsvAsync(DateOnly from, DateOnly to)
+    public async Task<byte[]> ExportCsvAsync(DateOnly from, DateOnly to, int? employeeId = null, string? type = null, string? paymentMode = null)
     {
-        var sales = await _db.SaleTransactions
+        var includeSales = string.IsNullOrEmpty(type) || type == "All" || type == "Sales";
+        var includeExpenses = string.IsNullOrEmpty(type) || type == "All" || type == "Expenses";
+
+        var salesQuery = _db.SaleTransactions
             .Include(s => s.DaybookEntry).ThenInclude(d => d.Employee)
             .Include(s => s.Customer)
             .Include(s => s.ServiceType)
-            .Where(s => s.DaybookEntry.Date >= from && s.DaybookEntry.Date <= to)
-            .OrderBy(s => s.DaybookEntry.Date)
-            .ToListAsync();
+            .Where(s => s.DaybookEntry.Date >= from && s.DaybookEntry.Date <= to);
 
-        var expenses = await _db.Expenses
+        if (employeeId.HasValue)
+            salesQuery = salesQuery.Where(s => s.DaybookEntry.EmployeeId == employeeId.Value);
+        if (!string.IsNullOrEmpty(paymentMode))
+            salesQuery = salesQuery.Where(s => s.PaymentMode == paymentMode);
+
+        var expensesQuery = _db.Expenses
             .Include(e => e.DaybookEntry).ThenInclude(d => d.Employee)
-            .Where(e => e.DaybookEntry.Date >= from && e.DaybookEntry.Date <= to)
-            .OrderBy(e => e.DaybookEntry.Date)
-            .ToListAsync();
+            .Where(e => e.DaybookEntry.Date >= from && e.DaybookEntry.Date <= to);
+
+        if (employeeId.HasValue)
+            expensesQuery = expensesQuery.Where(e => e.DaybookEntry.EmployeeId == employeeId.Value);
+
+        var sales = includeSales
+            ? await salesQuery.OrderBy(s => s.DaybookEntry.Date).ThenBy(s => s.CreatedAt).ToListAsync()
+            : new List<Models.SaleTransaction>();
+
+        var expenses = includeExpenses
+            ? await expensesQuery.OrderBy(e => e.DaybookEntry.Date).ThenBy(e => e.CreatedAt).ToListAsync()
+            : new List<Models.Expense>();
 
         var sb = new StringBuilder();
         sb.AppendLine("Type,Date,Employee,Customer,Service,Vehicle No,Vehicle Type,Amount,Payment Mode,Notes");

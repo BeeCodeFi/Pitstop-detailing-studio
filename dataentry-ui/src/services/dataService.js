@@ -43,7 +43,7 @@ export const reportService = {
   daily: (date) => api.get('/report/daily', { params: { date } }),
   monthly: (year, month) => api.get('/report/monthly', { params: { year, month } }),
   employee: (id, from, to) => api.get(`/report/employee/${id}`, { params: { from, to } }),
-  exportCsv: (from, to) => api.get('/report/export', { params: { from, to }, responseType: 'blob' }),
+  exportCsv: (from, to, employeeId, type, paymentMode) => api.get('/report/export', { params: { from, to, employeeId, type, paymentMode }, responseType: 'blob' }),
 };
 
 export const adminService = {
