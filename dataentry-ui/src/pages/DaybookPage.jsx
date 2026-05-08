@@ -236,7 +236,7 @@ export default function DaybookPage() {
       toast.success('Day finalized');
       setShowFinalizeConfirm(false);
       setFinalizeTyped('');
-      loadDaybook();
+      await loadDaybook();
     } catch (err) {
       toast.error('Failed to finalize');
     }

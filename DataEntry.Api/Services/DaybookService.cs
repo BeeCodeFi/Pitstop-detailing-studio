@@ -43,6 +43,19 @@ public class DaybookService
                 .Include(d => d.Expenses)
                 .FirstAsync(d => d.Id == entry.Id);
         }
+        else if (!entry.IsFinalized)
+        {
+            // For admin only: recalculate opening balance from the shop's combined closing balance
+            // in case the previous day's sales changed after this entry was created.
+            // Employees always have 0 opening balance — nothing to recalculate.
+            var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
+            if (entry.OpeningBalance != correctOpeningBalance)
+            {
+                entry.OpeningBalance = correctOpeningBalance;
+                entry.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+        }
 
         return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
@@ -151,14 +164,32 @@ public class DaybookService
 
     private async Task<decimal> GetCarryForwardBalance(int employeeId, DateOnly date)
     {
-        var previousEntry = await _db.DaybookEntries
-            .Include(d => d.Sales)
-            .Include(d => d.Expenses)
-            .Where(d => d.EmployeeId == employeeId && d.Date < date)
+        // Only admin entries carry the shop's combined cash balance forward.
+        // Regular employees always start with 0 opening balance.
+        var employee = await _db.Employees.FindAsync(employeeId);
+        if (employee == null || employee.Role != "Admin")
+            return 0;
+
+        // Find the most recent date before the requested date that has any daybook entries
+        var previousDate = await _db.DaybookEntries
+            .Where(d => d.Date < date)
             .OrderByDescending(d => d.Date)
+            .Select(d => (DateOnly?)d.Date)
             .FirstOrDefaultAsync();
 
-        return previousEntry?.ClosingBalance ?? 0;
+        if (previousDate == null) return 0;
+
+        // Calculate the combined shop closing balance from all employees on that day
+        var previousEntries = await _db.DaybookEntries
+            .Include(d => d.Sales)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date == previousDate)
+            .ToListAsync();
+
+        var combinedOpening = previousEntries.Max(e => e.OpeningBalance);
+        var totalSales = previousEntries.Sum(e => e.TotalSales);
+        var totalExpenses = previousEntries.Sum(e => e.TotalExpenses);
+        return combinedOpening + totalSales - totalExpenses;
     }
 
     private async Task<Dictionary<string, int>> GetVehicleVisitCounts(DaybookEntry entry)
@@ -301,8 +332,10 @@ public class DaybookService
             .OrderBy(s => s.CreatedAt)
             .ToList();
 
-        // Combined closing balance: use the max opening balance among all entries (the one set by admin)
-        var combinedOpening = entries.Any() ? entries.Max(e => e.OpeningBalance) : 0;
+        // Combined closing balance: use the admin's opening balance (employees always have 0)
+        var combinedOpening = entries.Any()
+            ? entries.Where(e => e.Employee.Role == "Admin").Select(e => e.OpeningBalance).FirstOrDefault()
+            : 0;
         var combinedExpenses = entries.Sum(e => e.Expenses.Sum(ex => ex.Amount));
         var totalSalesAmount = sales.Sum(s => s.Amount);
         var combinedClosing = combinedOpening + totalSalesAmount - combinedExpenses;
