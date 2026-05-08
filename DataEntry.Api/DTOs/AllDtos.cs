@@ -276,5 +276,9 @@ public record DailyCombinedSalesDto(
     decimal TotalCard,
     decimal TotalUpi,
     decimal TotalPending,
-    int TransactionCount
+    int TransactionCount,
+    decimal CombinedOpeningBalance = 0,
+    decimal CombinedExpenses = 0,
+    decimal CombinedClosingBalance = 0,
+    bool IsFinalized = false
 );

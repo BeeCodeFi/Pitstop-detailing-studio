@@ -24,6 +24,9 @@ export default function DaybookPage() {
   const [editSaleForm, setEditSaleForm] = useState({ serviceTypeId: '', amount: '', paymentMode: 'Cash', vehicleNumber: '', vehicleType: 'Hatchback', notes: '' });
   const [allSales, setAllSales] = useState(null); // admin: combined sales from all employees
 
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [finalizeTyped, setFinalizeTyped] = useState('');
+
   const EMPTY_LINE = () => ({ serviceTypeId: '', amount: '' });
   const [saleForm, setSaleForm] = useState({
     customerId: '', vehicleNumber: '', vehicleType: 'Hatchback',
@@ -38,7 +41,15 @@ export default function DaybookPage() {
 
   // Reset to today when component unmounts (optional — keep commented to persist across sessions)
 
+  const warnIfUnfinalized = () => {
+    if (isAdmin && daybook && !daybook.isFinalized && isToday) {
+      return confirm('⚠️ Today\'s daybook has NOT been finalized yet! Are you sure you want to navigate away?');
+    }
+    return true;
+  };
+
   const goToPreviousDay = () => {
+    if (!warnIfUnfinalized()) return;
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() - 1);
     setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
@@ -46,6 +57,7 @@ export default function DaybookPage() {
 
   const goToNextDay = () => {
     if (isToday) return;
+    if (!warnIfUnfinalized()) return;
     const d = new Date(date + 'T00:00:00');
     d.setDate(d.getDate() + 1);
     setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
@@ -219,10 +231,11 @@ export default function DaybookPage() {
   };
 
   const handleFinalize = async () => {
-    if (!confirm('Finalize this day? No more changes can be made after this.')) return;
     try {
       await daybookService.finalize(daybook.id);
       toast.success('Day finalized');
+      setShowFinalizeConfirm(false);
+      setFinalizeTyped('');
       loadDaybook();
     } catch (err) {
       toast.error('Failed to finalize');
@@ -259,7 +272,7 @@ export default function DaybookPage() {
                 type="date"
                 value={date}
                 max={today}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => { if (warnIfUnfinalized()) setDate(e.target.value); }}
                 className="pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
               />
             </div>
@@ -326,23 +339,15 @@ export default function DaybookPage() {
         </div>
       )}
 
-      {/* Closing Balance — admin only (based on admin's own books) */}
+      {/* Closing Balance — admin only (combined from all employees) */}
       {isAdmin && (
         <div className="bg-gradient-to-r from-primary to-primary-light rounded-xl p-5 mb-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-white/80">Closing Balance (Admin Books)</p>
-              <p className="text-3xl font-bold mt-1">₹{daybook.closingBalance.toLocaleString('en-IN')}</p>
-              <p className="text-xs text-white/60 mt-1">Opening ({daybook.openingBalance}) + Sales ({daybook.totalSales}) - Expenses ({daybook.totalExpenses})</p>
+              <p className="text-sm text-white/80">Closing Balance (Shop)</p>
+              <p className="text-3xl font-bold mt-1">₹{(allSales?.combinedClosingBalance ?? daybook.closingBalance).toLocaleString('en-IN')}</p>
+              <p className="text-xs text-white/60 mt-1">Opening ({allSales?.combinedOpeningBalance ?? daybook.openingBalance}) + Sales ({allSales?.totalSales ?? daybook.totalSales}) - Expenses ({allSales?.combinedExpenses ?? daybook.totalExpenses})</p>
             </div>
-            {!daybook.isFinalized && (
-              <button
-                onClick={handleFinalize}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-              >
-                <Lock className="w-4 h-4" /> Finalize Day
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -495,6 +500,62 @@ export default function DaybookPage() {
           </div>
         )}
       </div>
+
+      {/* Finalize Day Section — placed at bottom, admin only */}
+      {isAdmin && !daybook.isFinalized && (
+        <div className="mt-8 border-t border-gray-200 pt-6">
+          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-5">
+            <div>
+              <h3 className="text-sm font-semibold text-red-800">Finalize Day</h3>
+              <p className="text-xs text-red-600 mt-1">Once finalized, no more changes can be made to this day's entries.</p>
+            </div>
+            <button
+              onClick={() => setShowFinalizeConfirm(true)}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+            >
+              <Lock className="w-4 h-4" /> Finalize Day
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Finalize Confirmation Modal */}
+      <Modal isOpen={showFinalizeConfirm} onClose={() => { setShowFinalizeConfirm(false); setFinalizeTyped(''); }} title="⚠️ Confirm Finalize Day" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            This action is <strong>irreversible</strong>. Once finalized, no sales or expenses can be added, edited, or deleted for this day.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs text-amber-800 font-medium">Type <strong>FINALIZE</strong> below to confirm:</p>
+          </div>
+          <input
+            type="text"
+            value={finalizeTyped}
+            onChange={(e) => setFinalizeTyped(e.target.value)}
+            placeholder="Type FINALIZE"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
+          />
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => { setShowFinalizeConfirm(false); setFinalizeTyped(''); }}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleFinalize}
+              disabled={finalizeTyped !== 'FINALIZE'}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white cursor-pointer ${
+                finalizeTyped === 'FINALIZE' ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-300 cursor-not-allowed'
+              }`}
+            >
+              Finalize Day
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add Sale Modal */}
       <Modal isOpen={showSaleModal} onClose={() => { setShowSaleModal(false); setCustomerSearch(''); setSaleForm({ customerId: '', vehicleNumber: '', vehicleType: 'Hatchback', paymentMode: 'Cash', notes: '', serviceLines: [EMPTY_LINE()] }); }} title="Add Sale" size="md">

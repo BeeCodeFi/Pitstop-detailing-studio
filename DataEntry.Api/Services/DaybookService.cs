@@ -241,6 +241,7 @@ public class DaybookService
             .Include(d => d.Employee)
             .Include(d => d.Sales).ThenInclude(s => s.Customer)
             .Include(d => d.Sales).ThenInclude(s => s.ServiceType)
+            .Include(d => d.Expenses)
             .Where(d => d.Date == date)
             .ToListAsync();
 
@@ -255,14 +256,25 @@ public class DaybookService
             .OrderBy(s => s.CreatedAt)
             .ToList();
 
+        // Combined closing balance: use the max opening balance among all entries (the one set by admin)
+        var combinedOpening = entries.Any() ? entries.Max(e => e.OpeningBalance) : 0;
+        var combinedExpenses = entries.Sum(e => e.Expenses.Sum(ex => ex.Amount));
+        var totalSalesAmount = sales.Sum(s => s.Amount);
+        var combinedClosing = combinedOpening + totalSalesAmount - combinedExpenses;
+        var isFinalized = entries.Any() && entries.Any(e => e.IsFinalized);
+
         return new DailyCombinedSalesDto(
             date, sales,
-            sales.Sum(s => s.Amount),
+            totalSalesAmount,
             sales.Where(s => s.PaymentMode == "Cash").Sum(s => s.Amount),
             sales.Where(s => s.PaymentMode == "Card").Sum(s => s.Amount),
             sales.Where(s => s.PaymentMode == "UPI").Sum(s => s.Amount),
             sales.Where(s => s.PaymentMode == "Pending").Sum(s => s.Amount),
-            sales.Count
+            sales.Count,
+            combinedOpening,
+            combinedExpenses,
+            combinedClosing,
+            isFinalized
         );
     }
 }
