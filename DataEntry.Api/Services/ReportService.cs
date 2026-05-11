@@ -349,135 +349,142 @@ public class ReportService
                     });
 
                     col.Item().PaddingTop(10).Text("Daily Breakdown").FontSize(9.5f).Bold().FontColor("#111827");
-                    col.Item().PaddingTop(4).Table(table =>
+
+                    // ── Daily table rendered as explicit Rows (Row+RelativeItem is proven stable) ──
+                    // Column weights: Date=2, Sales=3, Cash=2, Card=2, UPI=2, Pending=2, Expenses=2, #=1  total=16
+                    col.Item().PaddingTop(4).Row(r =>
                     {
-                        table.ColumnsDefinition(cols =>
+                        const string hb = "#1a56db";
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).Text("Date").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(3).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Sales").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Cash").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Card").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("UPI").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Pending").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Expenses").FontSize(8).Bold().FontColor("#ffffff");
+                        r.RelativeItem(1).Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("#").FontSize(8).Bold().FontColor("#ffffff");
+                    });
+
+                    var rowIdx = 0;
+                    foreach (var d in dailyTotals)
+                    {
+                        var bg = rowIdx++ % 2 == 0 ? "#ffffff" : "#f9fafb";
+                        var pending = d.Pending;
+                        col.Item().Row(r =>
                         {
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(3);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(2);
-                            cols.RelativeColumn(1);
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).Text(d.Date.ToString("dd MMM")).FontSize(7.5f);
+                            r.RelativeItem(3).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Sales)).FontSize(7.5f).SemiBold();
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Cash)).FontSize(7.5f);
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Card)).FontSize(7.5f);
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Upi)).FontSize(7.5f);
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight()
+                                .Text(pending > 0 ? Amt(pending) : "-").FontSize(7.5f).FontColor(pending > 0 ? "#dc2626" : "#9ca3af");
+                            r.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Expenses)).FontSize(7.5f);
+                            r.RelativeItem(1).Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(d.Txns.ToString()).FontSize(7.5f);
                         });
-                        table.Header(h =>
-                        {
-                            const string hb = "#1a56db";
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).Text("Date").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Sales").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Cash").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Card").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("UPI").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Pending").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("Expenses").FontSize(8).Bold().FontColor("#ffffff");
-                            h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text("#").FontSize(8).Bold().FontColor("#ffffff");
-                        });
-                        var ri = 0;
-                        foreach (var d in dailyTotals)
-                        {
-                            var bg = ri++ % 2 == 0 ? "#ffffff" : "#f9fafb";
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).Text(d.Date.ToString("dd MMM")).FontSize(7.5f);
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Sales)).FontSize(7.5f).SemiBold();
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Cash)).FontSize(7.5f);
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Card)).FontSize(7.5f);
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Upi)).FontSize(7.5f);
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(d.Pending > 0 ? Amt(d.Pending) : "-").FontSize(7.5f).FontColor(d.Pending > 0 ? "#dc2626" : "#9ca3af");
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(Amt(d.Expenses)).FontSize(7.5f);
-                            table.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(4).AlignRight().Text(d.Txns.ToString()).FontSize(7.5f);
-                        }
+                    }
+
+                    col.Item().Row(r =>
+                    {
                         const string tb = "#dbeafe";
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).Text("TOTAL").FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalSales)).FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalCash)).FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalCard)).FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalUpi)).FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(totalPending > 0 ? Amt(totalPending) : "-").FontSize(7.5f).Bold().FontColor(totalPending > 0 ? "#dc2626" : "#9ca3af");
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalExpenses)).FontSize(7.5f).Bold();
-                        table.Cell().Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(dailyTotals.Sum(d => d.Txns).ToString()).FontSize(7.5f).Bold();
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).Text("TOTAL").FontSize(7.5f).Bold();
+                        r.RelativeItem(3).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalSales)).FontSize(7.5f).Bold();
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalCash)).FontSize(7.5f).Bold();
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalCard)).FontSize(7.5f).Bold();
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalUpi)).FontSize(7.5f).Bold();
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight()
+                            .Text(totalPending > 0 ? Amt(totalPending) : "-").FontSize(7.5f).Bold().FontColor(totalPending > 0 ? "#dc2626" : "#9ca3af");
+                        r.RelativeItem(2).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(Amt(totalExpenses)).FontSize(7.5f).Bold();
+                        r.RelativeItem(1).Background(tb).PaddingVertical(5).PaddingHorizontal(4).AlignRight().Text(dailyTotals.Sum(d => d.Txns).ToString()).FontSize(7.5f).Bold();
                     });
 
                     col.Item().PaddingTop(12).Row(row =>
                     {
+                        // ── Service-wise Revenue (Row-based, weights 4:3:1:2) ──
                         row.RelativeItem(5).Column(c =>
                         {
                             c.Item().Text("Service-wise Revenue").FontSize(9.5f).Bold().FontColor("#111827");
-                            c.Item().PaddingTop(4).Table(t =>
+                            c.Item().PaddingTop(4).Row(hr =>
                             {
-                                t.ColumnsDefinition(cols => { cols.RelativeColumn(4); cols.RelativeColumn(3); cols.RelativeColumn(1); cols.RelativeColumn(2); });
-                                t.Header(h =>
-                                {
-                                    const string hb = "#059669";
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Service").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Revenue").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Txns").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("% Share").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                });
-                                var si = 0;
-                                foreach (var s in serviceBreakdown)
-                                {
-                                    var bg = si++ % 2 == 0 ? "#ffffff" : "#f0fdf4";
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(s.Service).FontSize(7.5f);
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(s.Revenue)).FontSize(7.5f).SemiBold();
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(s.Count.ToString()).FontSize(7.5f);
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(totalSales > 0 ? $"{s.Revenue / totalSales * 100:F1}%" : "0%").FontSize(7.5f);
-                                }
+                                const string hb = "#059669";
+                                hr.RelativeItem(4).Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Service").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(3).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Revenue").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(1).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Txns").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("% Share").FontSize(7.5f).Bold().FontColor("#ffffff");
                             });
+                            var si = 0;
+                            foreach (var s in serviceBreakdown)
+                            {
+                                var svc = s;
+                                var bg = si++ % 2 == 0 ? "#ffffff" : "#f0fdf4";
+                                c.Item().Row(dr =>
+                                {
+                                    dr.RelativeItem(4).Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(svc.Service).FontSize(7.5f);
+                                    dr.RelativeItem(3).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(svc.Revenue)).FontSize(7.5f).SemiBold();
+                                    dr.RelativeItem(1).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(svc.Count.ToString()).FontSize(7.5f);
+                                    dr.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(totalSales > 0 ? $"{svc.Revenue / totalSales * 100:F1}%" : "0%").FontSize(7.5f);
+                                });
+                            }
                         });
+
                         row.ConstantItem(12);
+
+                        // ── Payment Mode (Row-based, weights 2:2:1) ──
                         row.RelativeItem(3).Column(c =>
                         {
                             c.Item().Text("Payment Mode").FontSize(9.5f).Bold().FontColor("#111827");
-                            c.Item().PaddingTop(4).Table(t =>
+                            c.Item().PaddingTop(4).Row(hr =>
                             {
-                                t.ColumnsDefinition(cols => { cols.RelativeColumn(2); cols.RelativeColumn(2); cols.RelativeColumn(1); });
-                                t.Header(h =>
-                                {
-                                    const string hb = "#7c3aed";
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Mode").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Amount").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("%").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                });
-                                var pi = 0;
-                                foreach (var p in paymentBreakdown)
-                                {
-                                    var bg = pi++ % 2 == 0 ? "#ffffff" : "#f5f3ff";
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(p.Mode).FontSize(7.5f);
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(p.Amount)).FontSize(7.5f).SemiBold();
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(totalSales > 0 ? $"{p.Amount / totalSales * 100:F1}%" : "0%").FontSize(7.5f);
-                                }
+                                const string hb = "#7c3aed";
+                                hr.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Mode").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Amount").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(1).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("%").FontSize(7.5f).Bold().FontColor("#ffffff");
                             });
+                            var pi = 0;
+                            foreach (var p in paymentBreakdown)
+                            {
+                                var pm = p;
+                                var bg = pi++ % 2 == 0 ? "#ffffff" : "#f5f3ff";
+                                c.Item().Row(dr =>
+                                {
+                                    dr.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(pm.Mode).FontSize(7.5f);
+                                    dr.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(pm.Amount)).FontSize(7.5f).SemiBold();
+                                    dr.RelativeItem(1).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(totalSales > 0 ? $"{pm.Amount / totalSales * 100:F1}%" : "0%").FontSize(7.5f);
+                                });
+                            }
                         });
+
                         row.ConstantItem(12);
+
+                        // ── Financial Summary (Row-based, weights 3:2) ──
                         row.RelativeItem(3).Column(c =>
                         {
                             c.Item().Text("Financial Summary").FontSize(9.5f).Bold().FontColor("#111827");
-                            c.Item().PaddingTop(4).Table(t =>
+                            c.Item().PaddingTop(4).Row(hr =>
                             {
-                                t.ColumnsDefinition(cols => { cols.RelativeColumn(3); cols.RelativeColumn(2); });
-                                t.Header(h =>
-                                {
-                                    const string hb = "#dc2626";
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Category").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                    h.Cell().Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Amount").FontSize(7.5f).Bold().FontColor("#ffffff");
-                                });
-                                var fRows = new (string Lbl, decimal Val, bool Red)[]
-                                {
-                                    ("Total Revenue",    totalSales,    false),
-                                    ("Total Expenses",   totalExpenses, false),
-                                    ("Salaries Paid",    totalSalaries, false),
-                                    ("Pending (Unpaid)", totalPending,  true),
-                                    ("Net Income",       netIncome,     netIncome < 0),
-                                };
-                                var fi = 0;
-                                foreach (var (lbl, val, red) in fRows)
-                                {
-                                    var bg = fi++ % 2 == 0 ? "#ffffff" : "#fef2f2";
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(lbl).FontSize(7.5f);
-                                    t.Cell().Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(val)).FontSize(7.5f).SemiBold().FontColor(red ? "#dc2626" : "#111827");
-                                }
+                                const string hb = "#dc2626";
+                                hr.RelativeItem(3).Background(hb).PaddingVertical(5).PaddingHorizontal(5).Text("Category").FontSize(7.5f).Bold().FontColor("#ffffff");
+                                hr.RelativeItem(2).Background(hb).PaddingVertical(5).PaddingHorizontal(5).AlignRight().Text("Amount").FontSize(7.5f).Bold().FontColor("#ffffff");
                             });
+                            var fRows = new (string Lbl, decimal Val, bool Red)[]
+                            {
+                                ("Total Revenue",    totalSales,    false),
+                                ("Total Expenses",   totalExpenses, false),
+                                ("Salaries Paid",    totalSalaries, false),
+                                ("Pending (Unpaid)", totalPending,  true),
+                                ("Net Income",       netIncome,     netIncome < 0),
+                            };
+                            var fi = 0;
+                            foreach (var (lbl, val, red) in fRows)
+                            {
+                                var label = lbl; var value = val; var isRed = red;
+                                var bg = fi++ % 2 == 0 ? "#ffffff" : "#fef2f2";
+                                c.Item().Row(dr =>
+                                {
+                                    dr.RelativeItem(3).Background(bg).PaddingVertical(4).PaddingHorizontal(5).Text(label).FontSize(7.5f);
+                                    dr.RelativeItem(2).Background(bg).PaddingVertical(4).PaddingHorizontal(5).AlignRight().Text(Amt(value)).FontSize(7.5f).SemiBold().FontColor(isRed ? "#dc2626" : "#111827");
+                                });
+                            }
                         });
                     });
 
