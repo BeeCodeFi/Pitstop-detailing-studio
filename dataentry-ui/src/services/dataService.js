@@ -46,6 +46,7 @@ export const reportService = {
   exportCsv: (from, to, employeeId, type, paymentMode) => api.get('/report/export', { params: { from, to, employeeId, type, paymentMode }, responseType: 'blob' }),
   getInsights: (year, month) => api.get('/report/insights', { params: { year, month } }),
   exportPdf: (year, month, includeAi = false) => api.get('/report/export-pdf', { params: { year, month, includeAi }, responseType: 'blob' }),
+  exportHtml: (year, month, includeAi = false) => api.get('/report/export-html', { params: { year, month, includeAi }, responseType: 'text' }),
 };
 
 export const adminService = {

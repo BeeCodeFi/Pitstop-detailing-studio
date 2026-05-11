@@ -90,4 +90,20 @@ public class ReportController : ControllerBase
         var monthName = new DateTime(y, m, 1).ToString("yyyy-MM");
         return File(pdf, "application/pdf", $"report_{monthName}.pdf");
     }
+
+    [HttpGet("export-html")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ExportHtml([FromQuery] int? year, [FromQuery] int? month, [FromQuery] bool includeAi = false)
+    {
+        var now = DateTime.Today;
+        var y = year ?? now.Year;
+        var m = month ?? now.Month;
+
+        BusinessInsightsDto? insights = null;
+        if (includeAi)
+            insights = await _insightService.GetInsightsAsync(y, m);
+
+        var html = await _reportService.GenerateMonthlyHtmlAsync(y, m, insights);
+        return Content(html, "text/html; charset=utf-8");
+    }
 }

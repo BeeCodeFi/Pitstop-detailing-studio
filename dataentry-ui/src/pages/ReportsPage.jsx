@@ -93,20 +93,17 @@ export default function ReportsPage() {
     }
   };
 
-  const handleExportPdf = async () => {
+  const handleExportHtml = async () => {
     setExportingPdf(true);
     try {
       const [y, m] = insightsMonth.split('-');
-      const response = await reportService.exportPdf(Number(y), Number(m), pdfIncludeAi);
-      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report_${insightsMonth}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('PDF downloaded');
+      const response = await reportService.exportHtml(Number(y), Number(m), pdfIncludeAi);
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      toast.success('Report opened — use Ctrl+P to save as PDF');
     } catch {
-      toast.error('PDF export failed');
+      toast.error('Report export failed');
     } finally {
       setExportingPdf(false);
     }
@@ -175,12 +172,12 @@ export default function ReportsPage() {
             </button>
             {tab === 'insights' && insights && (
               <button
-                onClick={handleExportPdf}
+                onClick={handleExportHtml}
                 disabled={exportingPdf}
                 className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all cursor-pointer shadow-sm disabled:opacity-60"
               >
                 {exportingPdf ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                PDF Report
+                Print / PDF Report
               </button>
             )}
             <button
@@ -351,12 +348,12 @@ export default function ReportsPage() {
                   Include AI in PDF
                 </label>
                 <button
-                  onClick={handleExportPdf}
+                  onClick={handleExportHtml}
                   disabled={exportingPdf}
                   className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
                 >
                   {exportingPdf ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                  {exportingPdf ? 'Generating…' : 'Export PDF'}
+                  {exportingPdf ? 'Generating…' : 'Print / PDF Report'}
                 </button>
               </>
             )}

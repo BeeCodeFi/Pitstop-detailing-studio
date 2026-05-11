@@ -558,4 +558,281 @@ public class ReportService
             return $"\"{value.Replace("\"", "\"\"")}\"";
         return value;
     }
+
+    // ── HTML Report ─────────────────────────────────────────────────────────
+    public async Task<string> GenerateMonthlyHtmlAsync(int year, int month, BusinessInsightsDto? insights = null)
+    {
+        var startDate  = new DateOnly(year, month, 1);
+        var endDate    = startDate.AddMonths(1).AddDays(-1);
+        var monthName  = new DateTime(year, month, 1).ToString("MMMM yyyy");
+
+        var entries = await _db.DaybookEntries
+            .Include(d => d.Employee)
+            .Include(d => d.Sales).ThenInclude(s => s.ServiceType)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date >= startDate && d.Date <= endDate)
+            .OrderBy(d => d.Date)
+            .ToListAsync();
+
+        var salaries = await _db.SalaryPayments
+            .Where(s => s.Date >= startDate && s.Date <= endDate)
+            .ToListAsync();
+
+        var allSales      = entries.SelectMany(e => e.Sales).ToList();
+        var totalSales    = allSales.Sum(s => s.Amount);
+        var totalExpenses = entries.Sum(e => e.TotalExpenses);
+        var totalSalaries = salaries.Sum(s => s.Amount);
+        var totalPending  = allSales.Where(s => s.PaymentMode == "Pending").Sum(s => s.Amount);
+        var totalCash     = allSales.Where(s => s.PaymentMode == "Cash").Sum(s => s.Amount);
+        var totalCard     = allSales.Where(s => s.PaymentMode == "Card").Sum(s => s.Amount);
+        var totalUpi      = allSales.Where(s => s.PaymentMode == "UPI").Sum(s => s.Amount);
+        var netIncome     = totalSales - totalExpenses - totalSalaries;
+
+        var dailyTotals = entries.GroupBy(e => e.Date)
+            .Select(g => new
+            {
+                Date     = g.Key,
+                Sales    = g.Sum(e => e.TotalSales),
+                Cash     = g.Sum(e => e.TotalCashCollected),
+                Card     = g.Sum(e => e.TotalCardCollected),
+                Upi      = g.Sum(e => e.TotalUpiCollected),
+                Pending  = g.Sum(e => e.TotalPendingCollected),
+                Expenses = g.Sum(e => e.TotalExpenses),
+                Txns     = g.Sum(e => e.Sales.Count)
+            })
+            .OrderBy(d => d.Date).ToList();
+
+        var serviceBreakdown = allSales
+            .Where(s => s.ServiceType != null)
+            .GroupBy(s => s.ServiceType!.Name)
+            .Select(g => new { Service = g.Key, Revenue = g.Sum(s => s.Amount), Count = g.Count() })
+            .OrderByDescending(s => s.Revenue).ToList();
+
+        var paymentBreakdown = allSales
+            .GroupBy(s => s.PaymentMode)
+            .Select(g => new { Mode = g.Key, Amount = g.Sum(s => s.Amount), Count = g.Count() })
+            .OrderByDescending(s => s.Amount).ToList();
+
+        static string Rs(decimal v) => $"&#x20B9;{v:N0}";
+        static string H(string s)   => System.Web.HttpUtility.HtmlEncode(s);
+
+        var sb = new StringBuilder();
+        sb.Append(@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+<meta charset=""UTF-8""/>
+<meta name=""viewport"" content=""width=device-width,initial-scale=1""/>
+<title>Monthly Business Report</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;font-size:13px;color:#111827;background:#fff;padding:24px}
+h1{font-size:22px;font-weight:700;color:#1a56db}
+h2{font-size:14px;font-weight:700;color:#111827;margin:20px 0 8px}
+.sub{font-size:12px;color:#6b7280;margin-top:2px}
+.meta{font-size:11px;color:#9ca3af;text-align:right}
+hr{border:none;border-top:2px solid #1a56db;margin:10px 0 18px}
+/* KPI grid */
+.kpi{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:20px}
+.kpi-card{border-radius:8px;padding:10px 12px;border:1px solid #e5e7eb}
+.kpi-card .lbl{font-size:11px;font-weight:600;margin-bottom:4px}
+.kpi-card .val{font-size:18px;font-weight:700}
+/* Tables */
+table{width:100%;border-collapse:collapse;margin-bottom:4px}
+th{padding:7px 10px;font-size:12px;font-weight:700;text-align:left;white-space:nowrap}
+th.r,td.r{text-align:right}
+td{padding:6px 10px;font-size:12px;border-bottom:1px solid #f3f4f6;white-space:nowrap}
+tr:nth-child(even) td{background:#f9fafb}
+.tfoot td{font-weight:700;background:#dbeafe!important}
+/* Section grid */
+.sections{display:grid;grid-template-columns:5fr 3fr 3fr;gap:16px;margin-top:4px}
+/* AI */
+.ai-summary{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;font-size:13px;color:#1e3a8a;margin-bottom:12px}
+.insights{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:12px}
+.insight{border-radius:8px;padding:10px 12px;border:1px solid}
+.insight .title{font-size:12px;font-weight:700;margin-bottom:3px}
+.insight .desc{font-size:11.5px}
+.positive{background:#f0fdf4;border-color:#86efac;color:#166534}
+.negative{background:#fef2f2;border-color:#fca5a5;color:#7f1d1d}
+.neutral{background:#f9fafb;border-color:#d1d5db;color:#374151}
+ul{padding-left:18px;margin:4px 0}
+li{font-size:12px;margin-bottom:2px}
+@media print{
+  @page{size:A3 landscape;margin:15mm}
+  body{padding:0}
+  .no-print{display:none!important}
+  h2{margin:12px 0 6px}
+  .kpi{grid-template-columns:repeat(6,1fr)}
+}
+</style>
+</head>
+<body>
+");
+
+        // Header
+        sb.Append($@"<div style=""display:flex;justify-content:space-between;align-items:flex-end"">
+  <div>
+    <h1>Monthly Business Report</h1>
+    <div class=""sub"">{H(monthName)}</div>
+  </div>
+  <div class=""meta"">Generated {DateTime.Now:dd MMM yyyy HH:mm}
+    <br/><button class=""no-print"" onclick=""window.print()"" style=""margin-top:6px;padding:6px 16px;background:#1a56db;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px"">&#128438; Save / Print PDF</button>
+  </div>
+</div>
+<hr/>
+");
+
+        // KPI cards
+        void KpiCard(string label, decimal value, string bg, string color)
+            => sb.Append($@"<div class=""kpi-card"" style=""background:{bg}""><div class=""lbl"" style=""color:{color}"">{H(label)}</div><div class=""val"" style=""color:{color}"">{Rs(value)}</div></div>");
+        void KpiCardN(string label, string value, string bg, string color)
+            => sb.Append($@"<div class=""kpi-card"" style=""background:{bg}""><div class=""lbl"" style=""color:{color}"">{H(label)}</div><div class=""val"" style=""color:{color}"">{H(value)}</div></div>");
+
+        sb.Append(@"<div class=""kpi"">");
+        KpiCard("Total Revenue",      totalSales,    "#ecfdf5", "#065f46");
+        KpiCard("Total Expenses",     totalExpenses, "#fef2f2", "#7f1d1d");
+        KpiCard("Salaries Paid",      totalSalaries, "#fffbeb", "#78350f");
+        KpiCard("Net Income",         netIncome,     netIncome >= 0 ? "#eff6ff" : "#fef2f2", netIncome >= 0 ? "#1e3a8a" : "#7f1d1d");
+        KpiCard("Pending (Unpaid)",   totalPending,  "#fff1f2", "#881337");
+        KpiCardN("Total Transactions", dailyTotals.Sum(d => d.Txns).ToString(), "#f5f3ff", "#4c1d95");
+        sb.Append("</div>\n");
+
+        // Daily breakdown table
+        sb.Append(@"<h2>Daily Breakdown</h2>
+<table>
+<thead><tr style=""background:#1a56db;color:#fff"">
+<th>Date</th><th class=""r"">Sales</th><th class=""r"">Cash</th><th class=""r"">Card</th><th class=""r"">UPI</th><th class=""r"">Pending</th><th class=""r"">Expenses</th><th class=""r"">#</th>
+</tr></thead><tbody>
+");
+        foreach (var d in dailyTotals)
+        {
+            sb.Append($@"<tr>
+<td>{d.Date:dd MMM}</td>
+<td class=""r""><strong>{Rs(d.Sales)}</strong></td>
+<td class=""r"">{Rs(d.Cash)}</td>
+<td class=""r"">{Rs(d.Card)}</td>
+<td class=""r"">{Rs(d.Upi)}</td>
+<td class=""r"" style=""color:{(d.Pending > 0 ? "#dc2626" : "#9ca3af")}"">{(d.Pending > 0 ? Rs(d.Pending) : "-")}</td>
+<td class=""r"">{Rs(d.Expenses)}</td>
+<td class=""r"">{d.Txns}</td>
+</tr>
+");
+        }
+        sb.Append($@"</tbody>
+<tfoot><tr class=""tfoot"">
+<td>TOTAL</td>
+<td class=""r"">{Rs(totalSales)}</td>
+<td class=""r"">{Rs(totalCash)}</td>
+<td class=""r"">{Rs(totalCard)}</td>
+<td class=""r"">{Rs(totalUpi)}</td>
+<td class=""r"" style=""color:{(totalPending > 0 ? "#dc2626" : "#9ca3af")}"">{(totalPending > 0 ? Rs(totalPending) : "-")}</td>
+<td class=""r"">{Rs(totalExpenses)}</td>
+<td class=""r"">{dailyTotals.Sum(d => d.Txns)}</td>
+</tr></tfoot>
+</table>
+");
+
+        // Three-column section
+        sb.Append(@"<div class=""sections"">
+");
+
+        // Service-wise
+        sb.Append(@"<div>
+<h2>Service-wise Revenue</h2>
+<table><thead><tr style=""background:#059669;color:#fff"">
+<th>Service</th><th class=""r"">Revenue</th><th class=""r"">Txns</th><th class=""r"">% Share</th>
+</tr></thead><tbody>
+");
+        foreach (var s in serviceBreakdown)
+        {
+            sb.Append($@"<tr>
+<td>{H(s.Service)}</td>
+<td class=""r""><strong>{Rs(s.Revenue)}</strong></td>
+<td class=""r"">{s.Count}</td>
+<td class=""r"">{(totalSales > 0 ? $"{s.Revenue / totalSales * 100:F1}%" : "0%")}</td>
+</tr>
+");
+        }
+        sb.Append("</tbody></table></div>\n");
+
+        // Payment mode
+        sb.Append(@"<div>
+<h2>Payment Mode</h2>
+<table><thead><tr style=""background:#7c3aed;color:#fff"">
+<th>Mode</th><th class=""r"">Amount</th><th class=""r"">%</th>
+</tr></thead><tbody>
+");
+        foreach (var p in paymentBreakdown)
+        {
+            sb.Append($@"<tr>
+<td>{H(p.Mode)}</td>
+<td class=""r""><strong>{Rs(p.Amount)}</strong></td>
+<td class=""r"">{(totalSales > 0 ? $"{p.Amount / totalSales * 100:F1}%" : "0%")}</td>
+</tr>
+");
+        }
+        sb.Append("</tbody></table></div>\n");
+
+        // Financial summary
+        sb.Append(@"<div>
+<h2>Financial Summary</h2>
+<table><thead><tr style=""background:#dc2626;color:#fff"">
+<th>Category</th><th class=""r"">Amount</th>
+</tr></thead><tbody>
+");
+        var finRows = new (string Lbl, decimal Val, bool Red)[]
+        {
+            ("Total Revenue",    totalSales,    false),
+            ("Total Expenses",   totalExpenses, false),
+            ("Salaries Paid",    totalSalaries, false),
+            ("Pending (Unpaid)", totalPending,  true),
+            ("Net Income",       netIncome,     netIncome < 0),
+        };
+        foreach (var (lbl, val, red) in finRows)
+            sb.Append($@"<tr><td>{H(lbl)}</td><td class=""r"" style=""color:{(red ? "#dc2626" : "#111827")}""><strong>{Rs(val)}</strong></td></tr>
+");
+        sb.Append("</tbody></table></div>\n");
+        sb.Append("</div>\n"); // end .sections
+
+        // AI Insights
+        if (insights != null)
+        {
+            sb.Append(@"<hr style=""border-color:#e5e7eb;margin:20px 0 12px""/>
+<h2 style=""color:#1a56db"">AI Business Insights</h2>
+");
+            if (!string.IsNullOrWhiteSpace(insights.AiSummary))
+                sb.Append($@"<div class=""ai-summary"">{H(insights.AiSummary)}</div>
+");
+
+            if (insights.AiInsights.Any())
+            {
+                sb.Append(@"<div class=""insights"">");
+                foreach (var item in insights.AiInsights)
+                {
+                    var cls = item.Type switch { "positive" => "positive", "negative" => "negative", _ => "neutral" };
+                    sb.Append($@"<div class=""insight {cls}""><div class=""title"">{H(item.Title)}</div><div class=""desc"">{H(item.Description)}</div></div>
+");
+                }
+                sb.Append("</div>\n");
+            }
+
+            if (insights.AiRecommendations.Any())
+            {
+                sb.Append("<h2>Recommendations</h2><ul>");
+                foreach (var rec in insights.AiRecommendations)
+                    sb.Append($"<li>{H(rec)}</li>");
+                sb.Append("</ul>\n");
+            }
+
+            if (insights.AiAlerts.Any())
+            {
+                sb.Append(@"<h2 style=""color:#dc2626"">&#9888; Alerts</h2><ul>");
+                foreach (var alert in insights.AiAlerts)
+                    sb.Append($@"<li style=""color:#dc2626"">{H(alert)}</li>");
+                sb.Append("</ul>\n");
+            }
+        }
+
+        sb.Append("</body></html>");
+        return sb.ToString();
+    }
 }
