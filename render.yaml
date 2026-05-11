@@ -12,6 +12,8 @@ services:
         value: "8080"
       - key: Jwt__Key
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       - key: Jwt__Issuer
         value: DataEntry.Api
       - key: Jwt__Audience
