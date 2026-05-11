@@ -6,7 +6,7 @@ import StatCard from '../components/StatCard';
 import Modal from '../components/Modal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { TrendingUp, Wallet, Receipt, Download, Trash2, Banknote, IndianRupee } from 'lucide-react';
+import { TrendingUp, Wallet, Receipt, Download, Trash2, Banknote, IndianRupee, Sparkles, FileText, AlertTriangle, CheckCircle, MinusCircle, TrendingDown, RefreshCw } from 'lucide-react';
 
 export default function ReportsPage() {
   const { isAdmin, user } = useAuth();
@@ -22,6 +22,15 @@ export default function ReportsPage() {
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // AI Insights state
+  const [insights, setInsights] = useState(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsMonth, setInsightsMonth] = useState(new Date().toISOString().slice(0, 7));
+
+  // PDF export state
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfIncludeAi, setPdfIncludeAi] = useState(false);
 
   // Export modal
   const [showExportModal, setShowExportModal] = useState(false);
@@ -67,6 +76,39 @@ export default function ReportsPage() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadInsights = async () => {
+    setInsightsLoading(true);
+    setInsights(null);
+    try {
+      const [y, m] = insightsMonth.split('-');
+      const { data } = await reportService.getInsights(Number(y), Number(m));
+      setInsights(data);
+    } catch (err) {
+      toast.error('Failed to load AI insights');
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    try {
+      const [y, m] = insightsMonth.split('-');
+      const response = await reportService.exportPdf(Number(y), Number(m), pdfIncludeAi);
+      const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report_${insightsMonth}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF downloaded');
+    } catch {
+      toast.error('PDF export failed');
+    } finally {
+      setExportingPdf(false);
     }
   };
 
@@ -116,6 +158,7 @@ export default function ReportsPage() {
   const tabs = [
     { id: 'monthly', label: 'Monthly Summary' },
     { id: 'employee', label: 'Employee Report' },
+    ...(isAdmin ? [{ id: 'insights', label: '✦ AI Insights' }] : []),
   ];
 
   return (
@@ -130,6 +173,16 @@ export default function ReportsPage() {
             >
               <Download className="w-4 h-4" /> Export CSV
             </button>
+            {tab === 'insights' && insights && (
+              <button
+                onClick={handleExportPdf}
+                disabled={exportingPdf}
+                className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-50 transition-all cursor-pointer shadow-sm disabled:opacity-60"
+              >
+                {exportingPdf ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                PDF Report
+              </button>
+            )}
             <button
               onClick={handleReset}
               disabled={resetting}
@@ -270,6 +323,234 @@ export default function ReportsPage() {
             />
           )}
         </>
+      )}
+
+      {/* AI Insights Tab */}
+      {tab === 'insights' && (
+        <div className="space-y-6">
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="month"
+              value={insightsMonth}
+              onChange={e => { setInsightsMonth(e.target.value); setInsights(null); }}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+            />
+            <button
+              onClick={loadInsights}
+              disabled={insightsLoading}
+              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition-colors cursor-pointer disabled:opacity-60"
+            >
+              {insightsLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {insightsLoading ? 'Analysing…' : 'Generate Insights'}
+            </button>
+            {insights && (
+              <>
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+                  <input type="checkbox" checked={pdfIncludeAi} onChange={e => setPdfIncludeAi(e.target.checked)} className="rounded" />
+                  Include AI in PDF
+                </label>
+                <button
+                  onClick={handleExportPdf}
+                  disabled={exportingPdf}
+                  className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  {exportingPdf ? <RefreshCw className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  {exportingPdf ? 'Generating…' : 'Export PDF'}
+                </button>
+              </>
+            )}
+          </div>
+
+          {insightsLoading && (
+            <div className="text-center py-16">
+              <RefreshCw className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">Gemini is analysing your business data…</p>
+            </div>
+          )}
+
+          {!insightsLoading && !insights && (
+            <div className="text-center py-16 text-gray-400">
+              <Sparkles className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Select a month and click "Generate Insights" to get AI-powered business analysis.</p>
+            </div>
+          )}
+
+          {insights && (
+            <>
+              {/* KPI row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatCard title="Total Revenue" value={insights.totalSales} icon={TrendingUp} color="success" />
+                <StatCard title="Net Income" value={insights.netIncome} icon={IndianRupee} color="primary" />
+                <StatCard title="Avg Daily Sales" value={insights.averageDailySales} icon={Wallet} color="accent" />
+                <StatCard title="Pending (Unpaid)" value={insights.pendingAmount} icon={Receipt} color="danger" />
+              </div>
+
+              {/* Growth badge */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+                  insights.revenueGrowthPercent >= 0
+                    ? 'bg-green-100 text-green-700'
+                    : 'bg-red-100 text-red-700'
+                }`}>
+                  {insights.revenueGrowthPercent >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  {insights.revenueGrowthPercent >= 0 ? '+' : ''}{insights.revenueGrowthPercent}% vs last month
+                </span>
+                <span className="text-sm text-gray-500">Best day: <strong>{insights.bestDay}</strong></span>
+                <span className="text-sm text-gray-500">Top service: <strong>{insights.topService}</strong></span>
+                <span className="text-sm text-gray-500">Top payment: <strong>{insights.topPaymentMode}</strong></span>
+                <span className="text-sm text-gray-500">{insights.totalTransactions} transactions</span>
+              </div>
+
+              {/* AI Summary */}
+              {insights.aiSummary && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-blue-800">{insights.aiSummary}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Insights cards */}
+              {insights.aiInsights?.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Key Insights</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {insights.aiInsights.map((item, i) => {
+                      const styles = {
+                        positive: { bg: 'bg-green-50 border-green-200', title: 'text-green-800', desc: 'text-green-700', Icon: CheckCircle, iconColor: 'text-green-500' },
+                        negative: { bg: 'bg-red-50 border-red-200', title: 'text-red-800', desc: 'text-red-700', Icon: AlertTriangle, iconColor: 'text-red-500' },
+                        neutral: { bg: 'bg-gray-50 border-gray-200', title: 'text-gray-800', desc: 'text-gray-600', Icon: MinusCircle, iconColor: 'text-gray-400' },
+                      }[item.type] || { bg: 'bg-gray-50 border-gray-200', title: 'text-gray-800', desc: 'text-gray-600', Icon: MinusCircle, iconColor: 'text-gray-400' };
+                      const { Icon } = styles;
+                      return (
+                        <div key={i} className={`${styles.bg} border rounded-xl p-4`}>
+                          <div className="flex items-start gap-2 mb-1">
+                            <Icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${styles.iconColor}`} />
+                            <p className={`text-sm font-semibold ${styles.title}`}>{item.title}</p>
+                          </div>
+                          <p className={`text-xs ${styles.desc} pl-6`}>{item.description}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Service breakdown */}
+                {insights.serviceBreakdown?.length > 0 && (
+                  <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <h3 className="text-sm font-semibold text-gray-700">Service-wise Revenue</h3>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {insights.serviceBreakdown.map((svc, i) => (
+                        <div key={i} className="px-4 py-3 flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-sm font-medium text-gray-800 truncate">{svc.serviceName}</p>
+                              <p className="text-sm font-bold text-gray-900 ml-2">₹{svc.totalRevenue.toLocaleString('en-IN')}</p>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-primary rounded-full" style={{ width: `${svc.percentage}%` }} />
+                            </div>
+                          </div>
+                          <div className="text-right text-xs text-gray-400 w-16 flex-shrink-0">
+                            <p>{svc.percentage}%</p>
+                            <p>{svc.transactionCount} txns</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Right column: payment mode + day of week */}
+                <div className="space-y-4">
+                  {insights.paymentModeBreakdown?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-700">Payment Modes</h3>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {insights.paymentModeBreakdown.map((p, i) => {
+                          const colors = { Cash: 'bg-green-500', Card: 'bg-blue-500', UPI: 'bg-yellow-500', Pending: 'bg-red-500' };
+                          return (
+                            <div key={i} className="px-4 py-2.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2.5 h-2.5 rounded-full ${colors[p.paymentMode] || 'bg-gray-400'}`} />
+                                <span className="text-sm text-gray-700">{p.paymentMode}</span>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-gray-900">₹{p.amount.toLocaleString('en-IN')}</p>
+                                <p className="text-xs text-gray-400">{p.percentage}%</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {insights.dayOfWeekBreakdown?.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <h3 className="text-sm font-semibold text-gray-700">Busiest Days</h3>
+                      </div>
+                      <div className="divide-y divide-gray-50">
+                        {insights.dayOfWeekBreakdown.slice(0, 5).map((d, i) => (
+                          <div key={i} className="px-4 py-2.5 flex items-center justify-between">
+                            <span className="text-sm text-gray-700">{d.dayName}</span>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">₹{d.averageSales.toLocaleString('en-IN')}</p>
+                              <p className="text-xs text-gray-400">avg · {d.transactionCount} txns</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Recommendations */}
+              {insights.aiRecommendations?.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-amber-800 mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" /> AI Recommendations
+                  </h3>
+                  <ul className="space-y-2">
+                    {insights.aiRecommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-amber-800">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Alerts */}
+              {insights.aiAlerts?.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <h3 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Alerts
+                  </h3>
+                  <ul className="space-y-2">
+                    {insights.aiAlerts.map((alert, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-red-700">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+                        {alert}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* Export CSV Modal */}

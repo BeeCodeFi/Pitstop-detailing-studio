@@ -42,6 +42,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DaybookService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<InsightService>();
+builder.Services.AddHttpClient<InsightService>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

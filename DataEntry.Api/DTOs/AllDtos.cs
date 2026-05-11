@@ -252,6 +252,56 @@ public record UpdateSalaryPaymentRequest(
     string? Notes
 );
 
+// === AI Business Insights ===
+public record ServiceBreakdownItem(
+    string ServiceName,
+    decimal TotalRevenue,
+    int TransactionCount,
+    decimal Percentage
+);
+
+public record PaymentModeBreakdownItem(
+    string PaymentMode,
+    decimal Amount,
+    int Count,
+    decimal Percentage
+);
+
+public record DayOfWeekBreakdownItem(
+    string DayName,
+    decimal AverageSales,
+    int TransactionCount
+);
+
+public record AiInsightItem(
+    string Title,
+    string Description,
+    string Type  // "positive", "negative", "neutral"
+);
+
+public record BusinessInsightsDto(
+    int Year,
+    int Month,
+    decimal TotalSales,
+    decimal TotalExpenses,
+    decimal NetIncome,
+    decimal RevenueGrowthPercent,
+    decimal AverageDailySales,
+    decimal PendingAmount,
+    int TotalTransactions,
+    string TopService,
+    string TopPaymentMode,
+    string BestDay,
+    string WorstDay,
+    List<ServiceBreakdownItem> ServiceBreakdown,
+    List<PaymentModeBreakdownItem> PaymentModeBreakdown,
+    List<DayOfWeekBreakdownItem> DayOfWeekBreakdown,
+    string AiSummary,
+    List<AiInsightItem> AiInsights,
+    List<string> AiRecommendations,
+    List<string> AiAlerts
+);
+
 // === Combined Daily Sales (Admin view) ===
 public record SaleWithEmployeeDto(
     int Id,

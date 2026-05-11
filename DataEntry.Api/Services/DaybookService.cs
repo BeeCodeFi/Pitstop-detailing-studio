@@ -216,10 +216,10 @@ public class DaybookService
         if (!vehicleNumbers.Any()) return new Dictionary<string, int>();
 
         var counts = await _db.SaleTransactions
-            .Include(s => s.DaybookEntry)
             .Where(s => s.VehicleNumber != null && vehicleNumbers.Contains(s.VehicleNumber.Trim().ToUpper()))
-            .GroupBy(s => s.VehicleNumber!.Trim().ToUpper())
-            .Select(g => new { Vehicle = g.Key, Count = g.Select(s => s.DaybookEntry.Date).Distinct().Count() })
+            .Join(_db.DaybookEntries, s => s.DaybookEntryId, d => d.Id, (s, d) => new { VehicleNumber = s.VehicleNumber!.Trim().ToUpper(), d.Date })
+            .GroupBy(x => x.VehicleNumber)
+            .Select(g => new { Vehicle = g.Key, Count = g.Select(x => x.Date).Distinct().Count() })
             .ToDictionaryAsync(x => x.Vehicle, x => x.Count);
 
         return counts;
@@ -326,10 +326,10 @@ public class DaybookService
         if (vehicleNumbers.Any())
         {
             vehicleVisitCounts = await _db.SaleTransactions
-                .Include(s => s.DaybookEntry)
                 .Where(s => s.VehicleNumber != null && vehicleNumbers.Contains(s.VehicleNumber.Trim().ToUpper()))
-                .GroupBy(s => s.VehicleNumber!.Trim().ToUpper())
-                .Select(g => new { Vehicle = g.Key, Count = g.Select(s => s.DaybookEntry.Date).Distinct().Count() })
+                .Join(_db.DaybookEntries, s => s.DaybookEntryId, d => d.Id, (s, d) => new { VehicleNumber = s.VehicleNumber!.Trim().ToUpper(), d.Date })
+                .GroupBy(x => x.VehicleNumber)
+                .Select(g => new { Vehicle = g.Key, Count = g.Select(x => x.Date).Distinct().Count() })
                 .ToDictionaryAsync(x => x.Vehicle, x => x.Count);
         }
 
