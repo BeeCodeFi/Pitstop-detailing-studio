@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json;
 using DataEntry.Api.Data;
@@ -12,6 +13,9 @@ public class InsightService
     private readonly IConfiguration _config;
     private readonly HttpClient _httpClient;
 
+    private static readonly ConcurrentDictionary<string, (BusinessInsightsDto Data, DateTime ExpiresAt)> _cache = new();
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(1);
+
     public InsightService(AppDbContext db, IConfiguration config, HttpClient httpClient)
     {
         _db = db;
@@ -21,6 +25,10 @@ public class InsightService
 
     public async Task<BusinessInsightsDto> GetInsightsAsync(int year, int month)
     {
+        var cacheKey = $"{year}-{month}";
+        if (_cache.TryGetValue(cacheKey, out var cached) && cached.ExpiresAt > DateTime.UtcNow)
+            return cached.Data;
+
         var startDate = new DateOnly(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
         var prevStartDate = startDate.AddMonths(-1);
@@ -101,7 +109,7 @@ public class InsightService
             year, month, totalSales, totalExpenses, netIncome, growthPercent,
             pendingAmount, avgDailySales, allSales.Count, serviceBreakdown, paymentBreakdown, dayOfWeekBreakdown);
 
-        return new BusinessInsightsDto(
+        var result = new BusinessInsightsDto(
             year, month,
             totalSales, totalExpenses, netIncome,
             growthPercent, avgDailySales, pendingAmount, allSales.Count,
@@ -109,6 +117,12 @@ public class InsightService
             serviceBreakdown, paymentBreakdown, dayOfWeekBreakdown,
             aiSummary, aiInsights, aiRecommendations, aiAlerts
         );
+
+        // Only cache if AI call succeeded (not a rate-limit/error response)
+        if (!aiSummary.StartsWith("AI unavailable") && !aiSummary.StartsWith("AI insights"))
+            _cache[cacheKey] = (result, DateTime.UtcNow.Add(CacheTtl));
+
+        return result;
     }
 
     private async Task<(string Summary, List<AiInsightItem> Insights, List<string> Recommendations, List<string> Alerts)>
@@ -165,7 +179,13 @@ insight types must be: positive, negative, or neutral.";
 
             var response = await _httpClient.PostAsJsonAsync(url, requestBody);
             if (!response.IsSuccessStatusCode)
-                return ($"AI unavailable (HTTP {(int)response.StatusCode}).", new(), new(), new());
+            {
+                var statusCode = (int)response.StatusCode;
+                var msg = statusCode == 429
+                    ? "AI insights rate limit reached — please try again in a minute."
+                    : $"AI unavailable (HTTP {statusCode})."; 
+                return (msg, new(), new(), new());
+            }
 
             var responseJson = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseJson);
