@@ -88,7 +88,7 @@ public class CustomerController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin,Explorer")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int id)
     {
         var customer = await _db.Customers.FindAsync(id);

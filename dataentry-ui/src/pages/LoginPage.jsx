@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Compass } from 'lucide-react';
 import logo from '../assets/logo.jpg';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loading } = useAuth();
+  const { login, loading, exploreAsGuest } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,6 +21,11 @@ export default function LoginPage() {
     } else {
       toast.error(result.message);
     }
+  };
+
+  const handleExplore = () => {
+    exploreAsGuest();
+    navigate('/admin/dashboard');
   };
 
   return (
@@ -88,6 +93,24 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400 font-medium">or</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleExplore}
+          className="w-full py-3 border-2 border-dashed border-amber-300 text-amber-700 bg-amber-50 rounded-xl font-medium hover:bg-amber-100 hover:border-amber-400 transition-all cursor-pointer flex items-center justify-center gap-2 group"
+        >
+          <Compass className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+          Explore with Demo Data
+        </button>
+        <p className="text-center text-xs text-amber-600/80 mt-2">
+          Browse all features using sample data — nothing is saved
+        </p>
 
         <p className="text-center text-xs text-gray-400 mt-6">
           Secure access for authorized personnel only
