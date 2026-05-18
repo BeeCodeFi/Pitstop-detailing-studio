@@ -19,7 +19,7 @@ public class DaybookController : ControllerBase
     }
 
     [HttpGet("all-sales")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Explorer")]
     public async Task<IActionResult> GetAllSales([FromQuery] DateOnly? date)
     {
         var targetDate = date ?? DateOnly.FromDateTime(DateTime.Today);
@@ -131,6 +131,6 @@ public class DaybookController : ControllerBase
 
     private bool IsAdmin()
     {
-        return User.IsInRole("Admin");
+        return User.IsInRole("Admin") || User.IsInRole("Explorer");
     }
 }

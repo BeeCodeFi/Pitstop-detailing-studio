@@ -18,7 +18,7 @@ const navItems = [
 ];
 
 export default function AdminLayout() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isExplorer } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,7 +33,7 @@ export default function AdminLayout() {
     navigate('/login');
   };
 
-  const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin);
+  const filteredNav = navItems.filter(item => !item.adminOnly || isAdmin || isExplorer);
 
   // Get current page title for breadcrumb
   const currentPage = filteredNav.find(item => location.pathname.startsWith(item.to));
@@ -137,6 +137,12 @@ export default function AdminLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto p-4 lg:p-8">
+          {isExplorer && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+              <span className="font-semibold">Explorer Mode</span>
+              <span className="text-amber-600">— you can interact with all features but no changes will be saved to the database.</span>
+            </div>
+          )}
           <div className="animate-fade-in">
             <Outlet />
           </div>

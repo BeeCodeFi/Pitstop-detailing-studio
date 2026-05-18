@@ -16,7 +16,7 @@ public class Employee
     public string PasswordHash { get; set; } = string.Empty;
 
     [Required, MaxLength(20)]
-    public string Role { get; set; } = "Employee"; // Admin or Employee
+    public string Role { get; set; } = "Employee"; // Admin, Employee, or Explorer
 
     [MaxLength(15)]
     public string? Phone { get; set; }

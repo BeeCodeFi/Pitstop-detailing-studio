@@ -1,11 +1,33 @@
 using DataEntry.Api.Models;
+using DataEntry.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace DataEntry.Api.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly IExplorerModeAccessor? _explorerMode;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, IExplorerModeAccessor? explorerMode = null)
+        : base(options)
+    {
+        _explorerMode = explorerMode;
+    }
+
+    // Explorer mode: skip all writes so no data is persisted to the database.
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_explorerMode?.IsExplorer == true)
+            return Task.FromResult(0);
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        if (_explorerMode?.IsExplorer == true)
+            return 0;
+        return base.SaveChanges();
+    }
 
     public DbSet<Employee> Employees => Set<Employee>();
     public DbSet<Customer> Customers => Set<Customer>();

@@ -35,7 +35,7 @@ public class ServiceTypeController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Explorer")]
     public async Task<IActionResult> Create([FromBody] CreateServiceTypeRequest request)
     {
         var service = new ServiceType
@@ -52,7 +52,7 @@ public class ServiceTypeController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Explorer")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateServiceTypeRequest request)
     {
         var service = await _db.ServiceTypes.FindAsync(id);
@@ -68,7 +68,7 @@ public class ServiceTypeController : ControllerBase
     }
 
     [HttpDelete("{id}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Explorer")]
     public async Task<IActionResult> Delete(int id)
     {
         var service = await _db.ServiceTypes.FindAsync(id);

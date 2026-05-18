@@ -35,13 +35,22 @@ public class DaybookService
             _db.DaybookEntries.Add(entry);
             await _db.SaveChangesAsync();
 
-            // Reload with includes
-            entry = await _db.DaybookEntries
-                .Include(d => d.Employee)
-                .Include(d => d.Sales).ThenInclude(s => s.Customer)
-                .Include(d => d.Sales).ThenInclude(s => s.ServiceType)
-                .Include(d => d.Expenses)
-                .FirstAsync(d => d.Id == entry.Id);
+            if (entry.Id > 0)
+            {
+                // Reload with includes (normal path)
+                entry = await _db.DaybookEntries
+                    .Include(d => d.Employee)
+                    .Include(d => d.Sales).ThenInclude(s => s.Customer)
+                    .Include(d => d.Sales).ThenInclude(s => s.ServiceType)
+                    .Include(d => d.Expenses)
+                    .FirstAsync(d => d.Id == entry.Id);
+            }
+            else
+            {
+                // Explorer mode: save was skipped, populate Employee navigation property for DTO mapping
+                entry.Employee = await _db.Employees.FindAsync(employeeId)
+                    ?? new Employee { Id = employeeId, Name = "Explorer" };
+            }
         }
         else if (!entry.IsFinalized)
         {
@@ -101,13 +110,22 @@ public class DaybookService
         entry.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        // Reload with navigation
-        var loaded = await _db.SaleTransactions
-            .Include(s => s.Customer)
-            .Include(s => s.ServiceType)
-            .FirstAsync(s => s.Id == sale.Id);
+        if (sale.Id > 0)
+        {
+            // Reload with navigation (normal path)
+            var loaded = await _db.SaleTransactions
+                .Include(s => s.Customer)
+                .Include(s => s.ServiceType)
+                .FirstAsync(s => s.Id == sale.Id);
+            return MapSaleToDto(loaded);
+        }
 
-        return MapSaleToDto(loaded);
+        // Explorer mode: save was skipped, load navigations manually
+        if (sale.CustomerId.HasValue)
+            sale.Customer = await _db.Customers.FindAsync(sale.CustomerId.Value);
+        sale.ServiceType = await _db.ServiceTypes.FindAsync(sale.ServiceTypeId)
+            ?? new ServiceType { Id = sale.ServiceTypeId, Name = string.Empty };
+        return MapSaleToDto(sale);
     }
 
     public async Task<bool> DeleteSaleAsync(int saleId, bool bypassFinalized = false)

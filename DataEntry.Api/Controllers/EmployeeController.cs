@@ -9,7 +9,7 @@ namespace DataEntry.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Admin,Explorer")]
 public class EmployeeController : ControllerBase
 {
     private readonly AppDbContext _db;

@@ -1,5 +1,6 @@
 using System.Text;
 using DataEntry.Api.Data;
+using DataEntry.Api.Middleware;
 using DataEntry.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -39,6 +40,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 // Services
+builder.Services.AddScoped<IExplorerModeAccessor, ExplorerModeAccessor>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DaybookService>();
 builder.Services.AddScoped<ReportService>();
@@ -128,6 +130,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
+app.UseMiddleware<ExplorerModeMiddleware>();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new {
     status = "ok",
