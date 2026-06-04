@@ -25,7 +25,7 @@ public class DaybookService
 
         if (entry == null)
         {
-            var openingBalance = await GetCarryForwardBalance(employeeId, date);
+            var openingBalance = await GetCarryForwardBalance(employeeId, date) ?? 0m;
             entry = new DaybookEntry
             {
                 EmployeeId = employeeId,
@@ -62,10 +62,13 @@ public class DaybookService
 
             if (isCurrentMonth)
             {
+                // Only update if a valid same-month carry-forward exists.
+                // Returns null when no same-month previous entry is found, which means
+                // there is no chain to carry forward from — preserve the existing balance.
                 var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
-                if (entry.OpeningBalance != correctOpeningBalance)
+                if (correctOpeningBalance.HasValue && entry.OpeningBalance != correctOpeningBalance.Value)
                 {
-                    entry.OpeningBalance = correctOpeningBalance;
+                    entry.OpeningBalance = correctOpeningBalance.Value;
                     entry.UpdatedAt = DateTime.UtcNow;
                     await _db.SaveChangesAsync();
                 }
@@ -186,13 +189,13 @@ public class DaybookService
         return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
 
-    private async Task<decimal> GetCarryForwardBalance(int employeeId, DateOnly date)
+    private async Task<decimal?> GetCarryForwardBalance(int employeeId, DateOnly date)
     {
         // Only admin entries carry the shop's combined cash balance forward.
         // Regular employees always start with 0 opening balance.
         var employee = await _db.Employees.FindAsync(employeeId);
         if (employee == null || employee.Role != "Admin")
-            return 0;
+            return null;
 
         // Find the admin's most recent entry before the requested date.
         // We look for the ADMIN's own entry specifically — not just any employee entry —
@@ -205,11 +208,14 @@ public class DaybookService
             .OrderByDescending(d => d.Date)
             .FirstOrDefaultAsync();
 
-        if (previousAdminEntry == null) return 0;
+        // No previous entry at all — nothing to carry forward.
+        if (previousAdminEntry == null) return null;
 
-        // Each month starts fresh with 0 opening balance — no carry-over across months.
+        // No same-month previous entry — month boundary or gap in days.
+        // Return null so the caller preserves the existing opening balance rather
+        // than overwriting it with 0.
         if (previousAdminEntry.Date.Month != date.Month || previousAdminEntry.Date.Year != date.Year)
-            return 0;
+            return null;
 
         // Include all employees' sales and expenses from that same date
         var allEntriesForDate = await _db.DaybookEntries
