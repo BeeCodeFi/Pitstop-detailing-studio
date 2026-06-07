@@ -242,6 +242,18 @@ export default function DaybookPage() {
     }
   };
 
+  const handleRepairChain = async () => {
+    if (!confirm('This will recalculate all opening balances for this month in order. Continue?')) return;
+    try {
+      const d = new Date(date + 'T00:00:00');
+      const { data } = await daybookService.repairMonth(d.getFullYear(), d.getMonth() + 1);
+      toast.success(data.message);
+      await loadDaybook();
+    } catch (err) {
+      toast.error('Repair failed');
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading daybook..." />;
   }
@@ -292,6 +304,15 @@ export default function DaybookPage() {
                 className="text-xs px-3 py-2 rounded-lg border border-primary text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer font-medium"
               >
                 Today
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={handleRepairChain}
+                className="text-xs px-3 py-2 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer font-medium"
+                title="Recalculate all opening balances for this month in order"
+              >
+                Repair Chain
               </button>
             )}
             {daybook.isFinalized && (

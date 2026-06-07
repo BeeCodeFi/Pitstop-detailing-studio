@@ -180,6 +180,71 @@ public class DaybookService
         return true;
     }
 
+    /// <summary>
+    /// Walks every admin entry for the given month in date order, re-derives each
+    /// entry's opening balance from the previous day's actual closing, and saves
+    /// corrections.  The very first admin entry of the month is the anchor — its
+    /// stored opening balance is never changed.
+    /// </summary>
+    public async Task<object> RepairMonthChainAsync(int year, int month)
+    {
+        var monthStart = new DateOnly(year, month, 1);
+        var monthEnd   = new DateOnly(year, month, DateTime.DaysInMonth(year, month));
+
+        // All admin entries for this month, in date order.
+        var adminEntries = await _db.DaybookEntries
+            .Include(d => d.Employee)
+            .Include(d => d.Sales)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date >= monthStart && d.Date <= monthEnd && d.Employee.Role == "Admin")
+            .OrderBy(d => d.Date)
+            .ToListAsync();
+
+        if (!adminEntries.Any())
+            return new { message = "No admin entries found for this month.", corrections = 0 };
+
+        // All employee entries for the same date range (for combined net).
+        var allEntriesForMonth = await _db.DaybookEntries
+            .Include(d => d.Sales)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date >= monthStart && d.Date <= monthEnd)
+            .ToListAsync();
+
+        var entriesByDate = allEntriesForMonth
+            .GroupBy(e => e.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        int corrections = 0;
+
+        // The first admin entry is the anchor — trust its stored opening.
+        decimal runningClosing = adminEntries[0].OpeningBalance;
+        if (entriesByDate.TryGetValue(adminEntries[0].Date, out var firstDayEntries))
+            runningClosing += firstDayEntries.Sum(e => e.TotalSales) - firstDayEntries.Sum(e => e.TotalExpenses);
+
+        // For every subsequent admin entry, correct the opening balance.
+        for (int i = 1; i < adminEntries.Count; i++)
+        {
+            var adminEntry = adminEntries[i];
+            if (adminEntry.OpeningBalance != runningClosing)
+            {
+                adminEntry.OpeningBalance = runningClosing;
+                adminEntry.UpdatedAt = DateTime.UtcNow;
+                corrections++;
+            }
+
+            // Advance running closing with this day's combined net.
+            if (entriesByDate.TryGetValue(adminEntry.Date, out var dayEntries))
+                runningClosing = adminEntry.OpeningBalance + dayEntries.Sum(e => e.TotalSales) - dayEntries.Sum(e => e.TotalExpenses);
+            else
+                runningClosing = adminEntry.OpeningBalance;
+        }
+
+        if (corrections > 0)
+            await _db.SaveChangesAsync();
+
+        return new { message = $"Repaired {corrections} entr{(corrections == 1 ? "y" : "ies")} for {year}-{month:00}.", corrections };
+    }
+
     public async Task<DaybookEntryDto?> FinalizeAsync(int daybookId)
     {
         var entry = await LoadEntry(daybookId);

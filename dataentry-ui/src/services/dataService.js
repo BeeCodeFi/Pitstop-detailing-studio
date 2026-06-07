@@ -75,6 +75,10 @@ export const daybookService = {
     if (isExplorerMode()) return mock({ ...mockDaybookEntry(new Date().toISOString().split('T')[0]), isFinalized: true });
     return api.put(`/daybook/${id}/finalize`);
   },
+  repairMonth: (year, month) => {
+    if (isExplorerMode()) return mock({ message: 'No repairs needed in demo mode.', corrections: 0 });
+    return api.post('/admin/repair-month', null, { params: { year, month } });
+  },
 };
 
 export const customerService = {
