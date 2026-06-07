@@ -52,19 +52,21 @@ public class DaybookService
                     ?? new Employee { Id = employeeId, Name = "Explorer" };
             }
         }
-        else if (!entry.IsFinalized)
+        else
         {
-            // Only recalculate opening balance for the current month's non-finalized entries.
-            // Past month entries keep their stored opening balance — navigating back to a previous
-            // month should show the accumulated values from that month, not reset them.
+            // For any current-month entry (finalized or not), always recalculate opening
+            // balance from the previous day's closing. The opening balance is a derived
+            // value — it is never independently authoritative except for the very first
+            // day of the month. Skipping finalized entries caused stale/corrupted opening
+            // balances to persist even after the previous day's data was corrected.
+            // Past-month entries are left untouched — they are historical records.
             var today = DateOnly.FromDateTime(DateTime.Today);
             bool isCurrentMonth = entry.Date.Year == today.Year && entry.Date.Month == today.Month;
 
             if (isCurrentMonth)
             {
-                // Only update if a valid same-month carry-forward exists.
-                // Returns null when no same-month previous entry is found, which means
-                // there is no chain to carry forward from — preserve the existing balance.
+                // Returns null when no same-month previous entry exists (first day of month),
+                // so the manually-set opening balance for month-start is preserved.
                 var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
                 if (correctOpeningBalance.HasValue && entry.OpeningBalance != correctOpeningBalance.Value)
                 {
