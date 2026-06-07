@@ -306,15 +306,6 @@ export default function DaybookPage() {
                 Today
               </button>
             )}
-            {isAdmin && (
-              <button
-                onClick={handleRepairChain}
-                className="text-xs px-3 py-2 rounded-lg border border-orange-400 text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer font-medium"
-                title="Recalculate all opening balances for this month in order"
-              >
-                Repair Chain
-              </button>
-            )}
             {daybook.isFinalized && (
               <span className="flex items-center gap-1 text-xs bg-green-100 text-green-700 px-3 py-1.5 rounded-full font-medium">
                 <Lock className="w-3 h-3" /> Finalized
@@ -532,19 +523,33 @@ export default function DaybookPage() {
         )}
       </div>
 
-      {/* Finalize Day Section — placed at bottom, admin only */}
-      {isAdmin && !daybook.isFinalized && (
-        <div className="mt-8 border-t border-gray-200 pt-6">
-          <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-5">
+      {/* Admin tools section — bottom of page */}
+      {isAdmin && (
+        <div className="mt-8 border-t border-gray-200 pt-6 space-y-3">
+          {!daybook.isFinalized && (
+            <div className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl p-5">
+              <div>
+                <h3 className="text-sm font-semibold text-red-800">Finalize Day</h3>
+                <p className="text-xs text-red-600 mt-1">Once finalized, no more changes can be made to this day's entries.</p>
+              </div>
+              <button
+                onClick={() => setShowFinalizeConfirm(true)}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              >
+                <Lock className="w-4 h-4" /> Finalize Day
+              </button>
+            </div>
+          )}
+          <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl p-4">
             <div>
-              <h3 className="text-sm font-semibold text-red-800">Finalize Day</h3>
-              <p className="text-xs text-red-600 mt-1">Once finalized, no more changes can be made to this day's entries.</p>
+              <h3 className="text-sm font-semibold text-gray-700">Repair Balance Chain</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Recalculates all opening balances for this month from raw transaction records. Safe to run anytime.</p>
             </div>
             <button
-              onClick={() => setShowFinalizeConfirm(true)}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              onClick={handleRepairChain}
+              className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap"
             >
-              <Lock className="w-4 h-4" /> Finalize Day
+              Repair Chain
             </button>
           </div>
         </div>
