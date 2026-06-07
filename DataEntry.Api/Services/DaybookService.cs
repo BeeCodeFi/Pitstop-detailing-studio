@@ -199,7 +199,7 @@ public class DaybookService
         if (employee == null || employee.Role != "Admin")
             return null;
 
-        // Find the most recent admin entry before the requested date.
+        // Find the most recent admin entry before the requested date in the same month.
         var previousAdminEntry = await _db.DaybookEntries
             .Include(d => d.Employee)
             .Include(d => d.Sales)
@@ -211,15 +211,35 @@ public class DaybookService
         // No previous admin entry at all — nothing to carry forward.
         if (previousAdminEntry == null) return null;
 
-        // The previous entry is from a different month — no cross-month carry-over.
-        // Return null so the caller preserves the existing opening balance rather than
-        // overwriting it with 0.
+        // Different month — no cross-month carry-over.
         if (previousAdminEntry.Date.Month != date.Month || previousAdminEntry.Date.Year != date.Year)
             return null;
 
-        // Use the displayed closing balance of the previous day as the opening for today.
-        // This sums ALL employees' sales/expenses for that date so the shop's combined
-        // cash position is reflected correctly.
+        // Recursively compute the CORRECT opening balance for the previous entry by
+        // walking back to the first entry of the month (whose stored opening is the
+        // admin-set anchor) and forward-computing through each day.
+        // This self-heals any stale/corrupted intermediate opening balances in the chain.
+        var correctPreviousOpening = await GetCarryForwardBalance(employeeId, previousAdminEntry.Date);
+        decimal anchoredOpening;
+        if (correctPreviousOpening.HasValue)
+        {
+            // Heal the previous entry if its stored opening is stale.
+            // The update is tracked by EF Core and committed by the caller's SaveChangesAsync.
+            if (previousAdminEntry.OpeningBalance != correctPreviousOpening.Value)
+            {
+                previousAdminEntry.OpeningBalance = correctPreviousOpening.Value;
+                previousAdminEntry.UpdatedAt = DateTime.UtcNow;
+            }
+            anchoredOpening = correctPreviousOpening.Value;
+        }
+        else
+        {
+            // Previous entry is the first of the month — its stored opening is the anchor
+            // (manually set by admin, or 0 if not set). Trust it as-is.
+            anchoredOpening = previousAdminEntry.OpeningBalance;
+        }
+
+        // Sum ALL employees' sales/expenses for the previous date (combined shop balance).
         var allEntriesForDate = await _db.DaybookEntries
             .Include(d => d.Sales)
             .Include(d => d.Expenses)
@@ -228,7 +248,7 @@ public class DaybookService
 
         var totalSales = allEntriesForDate.Sum(e => e.TotalSales);
         var totalExpenses = allEntriesForDate.Sum(e => e.TotalExpenses);
-        return previousAdminEntry.OpeningBalance + totalSales - totalExpenses;
+        return anchoredOpening + totalSales - totalExpenses;
     }
 
     private async Task<Dictionary<string, int>> GetVehicleVisitCounts(DaybookEntry entry)
