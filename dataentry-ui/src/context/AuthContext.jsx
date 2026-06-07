@@ -10,8 +10,13 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(false);
   const [activeDaybookDate, setActiveDaybookDate] = useState(
-    new Date().toISOString().split('T')[0]
+    localStorage.getItem('activeDaybookDate') || new Date().toISOString().split('T')[0]
   );
+
+  const setActiveDaybookDatePersisted = (date) => {
+    localStorage.setItem('activeDaybookDate', date);
+    setActiveDaybookDate(date);
+  };
 
   const login = async (username, password) => {
     setLoading(true);
@@ -49,7 +54,7 @@ export function AuthProvider({ children }) {
   const isExplorer = user?.role === 'Explorer';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, exploreAsGuest, loading, isAdmin, isExplorer, activeDaybookDate, setActiveDaybookDate }}>
+    <AuthContext.Provider value={{ user, login, logout, exploreAsGuest, loading, isAdmin, isExplorer, activeDaybookDate, setActiveDaybookDate: setActiveDaybookDatePersisted }}>
       {children}
     </AuthContext.Provider>
   );
