@@ -197,44 +197,36 @@ public class DaybookService
         if (employee == null || employee.Role != "Admin")
             return null;
 
-        var monthStart = new DateOnly(date.Year, date.Month, 1);
-
-        // Fetch all entries (all employees) for this month up to (but not including) the
-        // requested date in a single query — includes Sales/Expenses for computed properties.
-        var allEntriesBeforeDate = await _db.DaybookEntries
+        // Find the most recent admin entry before the requested date.
+        var previousAdminEntry = await _db.DaybookEntries
             .Include(d => d.Employee)
             .Include(d => d.Sales)
             .Include(d => d.Expenses)
-            .Where(d => d.Date >= monthStart && d.Date < date)
+            .Where(d => d.Date < date && d.Employee.Role == "Admin")
+            .OrderByDescending(d => d.Date)
+            .FirstOrDefaultAsync();
+
+        // No previous admin entry at all — nothing to carry forward.
+        if (previousAdminEntry == null) return null;
+
+        // The previous entry is from a different month — no cross-month carry-over.
+        // Return null so the caller preserves the existing opening balance rather than
+        // overwriting it with 0.
+        if (previousAdminEntry.Date.Month != date.Month || previousAdminEntry.Date.Year != date.Year)
+            return null;
+
+        // Use the displayed closing balance of the previous day as the opening for today.
+        // This sums ALL employees' sales/expenses for that date so the shop's combined
+        // cash position is reflected correctly.
+        var allEntriesForDate = await _db.DaybookEntries
+            .Include(d => d.Sales)
+            .Include(d => d.Expenses)
+            .Where(d => d.Date == previousAdminEntry.Date)
             .ToListAsync();
 
-        // Admin entries in chronological order drive the chain.
-        var adminEntries = allEntriesBeforeDate
-            .Where(e => e.Employee.Role == "Admin")
-            .OrderBy(e => e.Date)
-            .ToList();
-
-        // No same-month admin entry before this date — nothing to chain from.
-        // Return null so the caller preserves the existing opening balance instead of
-        // overwriting it with 0.
-        if (!adminEntries.Any()) return null;
-
-        // Chain from the first admin entry of the month, using its stored opening balance
-        // as the anchor (the one value we must trust — it was either manually set or
-        // defaulted to 0 on month start).  We deliberately do NOT use stored opening
-        // balances for intermediate days because they may have been corrupted (set to 0)
-        // by the old buggy code.  Re-chaining from day-one gives the correct figure.
-        decimal runningBalance = adminEntries.First().OpeningBalance;
-
-        foreach (var adminEntry in adminEntries)
-        {
-            var entriesForDate = allEntriesBeforeDate.Where(e => e.Date == adminEntry.Date).ToList();
-            var totalSales = entriesForDate.Sum(e => e.TotalSales);
-            var totalExpenses = entriesForDate.Sum(e => e.TotalExpenses);
-            runningBalance = runningBalance + totalSales - totalExpenses;
-        }
-
-        return runningBalance;
+        var totalSales = allEntriesForDate.Sum(e => e.TotalSales);
+        var totalExpenses = allEntriesForDate.Sum(e => e.TotalExpenses);
+        return previousAdminEntry.OpeningBalance + totalSales - totalExpenses;
     }
 
     private async Task<Dictionary<string, int>> GetVehicleVisitCounts(DaybookEntry entry)
