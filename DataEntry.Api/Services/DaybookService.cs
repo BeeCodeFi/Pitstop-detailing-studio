@@ -52,30 +52,10 @@ public class DaybookService
                     ?? new Employee { Id = employeeId, Name = "Explorer" };
             }
         }
-        else
-        {
-            // For any current-month entry (finalized or not), always recalculate opening
-            // balance from the previous day's closing. The opening balance is a derived
-            // value — it is never independently authoritative except for the very first
-            // day of the month. Skipping finalized entries caused stale/corrupted opening
-            // balances to persist even after the previous day's data was corrected.
-            // Past-month entries are left untouched — they are historical records.
-            var today = DateOnly.FromDateTime(DateTime.Today);
-            bool isCurrentMonth = entry.Date.Year == today.Year && entry.Date.Month == today.Month;
-
-            if (isCurrentMonth)
-            {
-                // Returns null when no same-month previous entry exists (first day of month),
-                // so the manually-set opening balance for month-start is preserved.
-                var correctOpeningBalance = await GetCarryForwardBalance(employeeId, date);
-                if (correctOpeningBalance.HasValue && entry.OpeningBalance != correctOpeningBalance.Value)
-                {
-                    entry.OpeningBalance = correctOpeningBalance.Value;
-                    entry.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
-            }
-        }
+        // NOTE: We intentionally do NOT auto-recalculate the opening balance for existing
+        // entries on navigation. Doing so caused a loop where the repair's correct value
+        // was immediately overwritten by GetCarryForwardBalance using a stale prior day.
+        // Use the "Repair Chain" button to fix the entire month's chain at once.
 
         return MapToDto(entry, await GetVehicleVisitCounts(entry));
     }
@@ -242,7 +222,19 @@ public class DaybookService
         if (corrections > 0)
             await _db.SaveChangesAsync();
 
-        return new { message = $"Repaired {corrections} entr{(corrections == 1 ? "y" : "ies")} for {year}-{month:00}.", corrections };
+        return new
+        {
+            message = $"Repaired {corrections} entr{(corrections == 1 ? "y" : "ies")} for {year}-{month:00}.",
+            corrections,
+            days = adminEntries.Select(e => new
+            {
+                date = e.Date.ToString("yyyy-MM-dd"),
+                openingBalance = e.OpeningBalance,
+                totalSales = entriesByDate.TryGetValue(e.Date, out var de) ? de.Sum(x => x.TotalSales) : 0,
+                totalExpenses = entriesByDate.TryGetValue(e.Date, out var de2) ? de2.Sum(x => x.TotalExpenses) : 0,
+                closingBalance = e.OpeningBalance + (entriesByDate.TryGetValue(e.Date, out var de3) ? de3.Sum(x => x.TotalSales) - de3.Sum(x => x.TotalExpenses) : 0)
+            }).ToList()
+        };
     }
 
     public async Task<DaybookEntryDto?> FinalizeAsync(int daybookId)
